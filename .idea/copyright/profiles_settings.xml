@@ -1,3 +1,7 @@
 <component name="CopyrightManager">
   <settings default="" />
+    <copyright>
+        <option name="notice" value="Copyright (c) &amp;#36;today.year&#10;&#10; " />
+    </copyright>
+
 </component>
