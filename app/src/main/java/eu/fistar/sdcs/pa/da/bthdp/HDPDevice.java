@@ -38,7 +38,7 @@ import eu.fistar.sdcs.pa.ISensorDescription;
 public class HDPDevice implements IDeviceDescription {
 
     private String deviceID; // The 8 byte System-Id
-    private String modelNumber; // TODO Decide what to do with this parameter, for now it's always set to empty String
+    private String serialNumber; // The device's serial number, empty if not automatically provided by the device
     private String modelName; // The model name
     private String manufacturerName; // The manufacturer name
     private List<ISensorDescription> sensorList = new ArrayList<ISensorDescription>(); // The list of the properties
@@ -72,7 +72,7 @@ public class HDPDevice implements IDeviceDescription {
      */
     public void setAttributes(String mDeviceID, String mModelNumber, String mModelName, String mManufacturerName, String mIeeeDevSpecID) {
         deviceID = mDeviceID.replaceAll(":","").toUpperCase();
-        modelNumber = mModelNumber;
+        serialNumber = mModelNumber;
         modelName = mModelName;
         manufacturerName = mManufacturerName;
         ieeeDevSpecID.add(mIeeeDevSpecID);
@@ -100,8 +100,8 @@ public class HDPDevice implements IDeviceDescription {
     }
 
     @Override
-    public String getModelNumber() {
-        return modelNumber;
+    public String getSerialNumber() {
+        return serialNumber;
     }
 
     @Override
@@ -163,7 +163,7 @@ public class HDPDevice implements IDeviceDescription {
             propStr += temp.toString();
         }
 
-        return "ID: "+deviceID+"\nModel Number: "+modelNumber+"\nModel Name: "+modelName+
+        return "ID: "+deviceID+"\nModel Number: "+ serialNumber +"\nModel Name: "+modelName+
                 "\nManufacturer: "+manufacturerName+"\nDevice Specialization: "+ieeeDevSpecID.get(0)+
                 "\nAddress: "+address+"\nProperties: "+propStr;
     }

@@ -1,4 +1,7 @@
 /*
+ * Copyright (C) 2014 Consorzio Roma Ricerche
+ *
+ * Based on Signove Antidote HDP Library
  * Copyright (C) 2012 Signove Tecnologia
  * 
  * Parts based on Bluetooth HDP example from Android SDK

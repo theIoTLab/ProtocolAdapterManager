@@ -39,7 +39,7 @@ import java.util.List;
 public interface IDeviceDescription {
 
     /**
-     * Returns the device unique identifier
+     * Returns the device unique identifier as provided by the device
      *
      * @return
      *      The unique identifier for that device
@@ -52,7 +52,7 @@ public interface IDeviceDescription {
      * @return
      *      The model number of the device
      */
-    public String getModelNumber();
+    public String getSerialNumber();
 
     /**
      * Returns the model name of the device

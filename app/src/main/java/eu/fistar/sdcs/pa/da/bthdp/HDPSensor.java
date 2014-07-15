@@ -13,10 +13,10 @@ public class HDPSensor implements ISensorDescription {
 
     private static final String UNKNOWN = "Unknown";
 
-    private String sensorName;          // TODO The sensor name, i.e. pulsimeter [WARNING: Not retrievable automatically, find a solution]
+    private String sensorName;          // The sensor name (i.e. pulsimeter) taken from the hashmap using the ISO 11073 ID as the key
     private String measurementUnit;     // The measurement unit of the property, i.e. bpm
-    private String propertyName;        // TODO The name of the property, i.e. pulse [WARNING: Not retrievable automatically, find a solution]
-    private String ieee11073ID;          // The numeric ID used in ISO 11073
+    private String propertyName;        // The name of the property (i.e. pulse)
+    private String ieee11073ID;          // The numeric ID used in ISO 11073 taken from the hashmap using the ISO 11073 ID as the key
 
     private Map<String, String[]> propertyDb = new HashMap<String, String[]>();
 
@@ -40,6 +40,7 @@ public class HDPSensor implements ISensorDescription {
      * with the property
      */
     private void createPropertyDb() {
+        // TODO Expand the HashMap with more codes from the ISO 11073 Nomenclature
         propertyDb.put("19384", new String[] {"oximeter", "oximetry", "%"});
         propertyDb.put("18458", new String[] {"pulsimeter", "pulse", "bpm"});
         propertyDb.put("18474", new String[] {"pulsimeter", "pulse", "bpm"});
