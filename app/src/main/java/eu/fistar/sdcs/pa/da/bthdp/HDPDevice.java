@@ -58,8 +58,8 @@ public class HDPDevice implements IDeviceDescription {
      * @param mDeviceID
      *      The 8 byte System-Id
      *
-     * @param mModelNumber
-     *      The model number (not used right now)
+     * @param mSerialNumber
+     *      The serial number of the device (not used right now)
      *
      * @param mModelName
      *      The model name
@@ -70,9 +70,9 @@ public class HDPDevice implements IDeviceDescription {
      * @param mIeeeDevSpecID
      *      The Devce Specialization ID
      */
-    public void setAttributes(String mDeviceID, String mModelNumber, String mModelName, String mManufacturerName, String mIeeeDevSpecID) {
+    public void setAttributes(String mDeviceID, String mSerialNumber, String mModelName, String mManufacturerName, String mIeeeDevSpecID) {
         deviceID = mDeviceID.replaceAll(":","").toUpperCase();
-        serialNumber = mModelNumber;
+        serialNumber = mSerialNumber;
         modelName = mModelName;
         manufacturerName = mManufacturerName;
         ieeeDevSpecID.add(mIeeeDevSpecID);
