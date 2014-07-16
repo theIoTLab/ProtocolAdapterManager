@@ -31,13 +31,21 @@ import android.content.ServiceConnection;
 import android.os.Message;
 import android.os.Messenger;
 
+/**
+ * This class implements the service that manages the HDP data flow. This service communicates with
+ * @HDPDriverService to send and receive raw data to and from devices. It also communicate with the
+ * Antidote native code (core and healthd) that acts as a ISO 11073 manager via the JNI Bridge,
+ * forwarding the raw data sent in by devices and relaying the related replies to the devices.
+ * Finally, it communicates with the Device Adapter to notify device-related events and data.
+ *
+ * @author Marcello Morena
+ * @author Alexandru Serbanati
+ */
 public class HDPHealthManagerService extends Service {
 	String TAG = "HSS";
 	String PATH_PREFIX = "/eu/fistar/sdcs/pa/da/bthdp/device/";
 	Handler tm;
 	JniBridge antidote;
-
-	private static final int [] HEALTH_PROFILE_SOURCE_DATA_TYPES = {0x1004, 0x1007, 0x1008, 0x1029, 0x100f};
 
     // From Bluetooth HDP Specification
     // MDEP Data Type Codes assigned to Device Specializations
@@ -46,8 +54,9 @@ public class HDPHealthManagerService extends Service {
     //     0x1008 - Body Thermometer
     //     0x100F - Body Weight Scale
     //     0x1029 - Cardiovascular Fitness and Activity Monitor
+	private static final int [] HEALTH_PROFILE_SOURCE_DATA_TYPES = {0x1004, 0x1007, 0x1008, 0x100f, 0x1029};
 
-	private BluetoothAdapter mBluetoothAdapter;
+    private BluetoothAdapter mBluetoothAdapter;
 	private Messenger mHealthService;
 	private boolean mHealthServiceBound;
 

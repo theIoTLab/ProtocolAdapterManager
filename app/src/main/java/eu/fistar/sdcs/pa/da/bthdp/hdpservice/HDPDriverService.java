@@ -34,6 +34,15 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 
+/**
+ * This class implements the service that is responsible for establishing and handling the Bluetooth
+ * HDP channel with the devices that we want to connect with. Moreover, this service takes any data
+ * sent in by the devices and forward it to the @HDPHealthManagerService. It also takes any data
+ * sent back from the @HDPHealthManagerService and forward it to the devices.
+ *
+ * @author Marcello Morena
+ * @author Alexandru Serbanati
+ */
 public class HDPDriverService extends Service {
 	private static final String TAG = "HSSHDP";
 
@@ -199,7 +208,7 @@ public class HDPDriverService extends Service {
 		mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
 		if (mBluetoothAdapter == null || !mBluetoothAdapter.isEnabled()) {
 			// Bluetooth adapter isn't available.  The client of the service is supposed to
-			// verify that it is available and activate before invoking this service.
+			// verify that it is available and active before invoking this service.
 			stopSelf();
 			return;
 		}
