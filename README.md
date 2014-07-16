@@ -14,7 +14,7 @@ Currently only the HDP Device Adapter is available.
 The HDP Device Adapter manages the data collection from medical devices implementing Bluetooth HDP. The HDP Device Adapter can manage multiple devices at the same time. These devices though must be previously paired with the Android Device.
 Note: The HDP Device Adapter makes use for Bluettoth HDP management of Signove's Antidote libraries available as well under L-GPL licence from ( http://oss.signove.com/index.php/Antidote:_IEEE_11073-20601_stack ) for what concerns the data acquisition from HDP medical devices. 
 ## Authors, Contact and Contributions
-As the licence reads, this is free software. The authors (Marcello Morena and Alexandru Serbanati) will continuously add support for even more medical devices, but external contributions are welcome. Please have a look at the TODO file on what we are working on and contact us (protocoladapter[at]gmail[dot]com) if you plan on contributing.
+As the licence reads, this is free software released by Consorzio Roma Ricerche. The authors (Marcello Morena and Alexandru Serbanati) will continuously add support for even more medical devices, but external contributions are welcome. Please have a look at the TODO file on what we are working on and contact us (protocoladapter[at]gmail[dot]com) if you plan on contributing.
 ## Acknowledgement
 This work was carried out with the support of the FI-STAR project (“Future Internet Social and Technological Alignment Research”), an integrated project funded by the European Commission through the 7th ICT - Framework Programme (318389).
 
