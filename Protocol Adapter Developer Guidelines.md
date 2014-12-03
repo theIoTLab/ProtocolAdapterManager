@@ -31,22 +31,22 @@ The Protocol Adapter library is a library that contains all the objects and faci
 The first thing to do in order to work with the Protocol Adapter is to include the Protocol Adapter Library inside your project. Since Android Studio is now (Dic. 2014) in the latest stages of beta and it would soon released as stable, and since we used Android Studio as our IDE when developing the entire project, we will cover here the AAR package inclusion on Android Studio. For other IDEs, you should be able to find abundant resources on-line.
 Unluckily, to date (Dic. 2014) Android Studio does not offer a straightforward method to include an AAR package, but nevertheless the process is quite simple.
 
-First of all you should copy the AAR file inside the “libs” directory of your app module. You can do this by simply copy-pasting the file from your file manager directly in the IDE. 
+First of all you should copy the AAR file inside the `libs` directory of your app module. You can do this by simply copy-pasting the file from your file manager directly in the IDE. 
 
-Then you should edit the build.gradle file of your app module and add these lines. If the “dependencies” section already exists (this is the most common case) just add the “compile” line to the existing section.
+Then you should edit the build.gradle file of your app module and add these lines. If the `dependencies` section already exists (this is the most common case) just add the `compile` line to the existing section.
 
     // This entry is added in order to use the AAR library
     repositories {
-        flatDir { dirs ''libs'' }
+        flatDir { dirs 'libs' }
     }
     dependencies {
       // This is the entry that adds the dependency from the AAR library
       compile 'eu.fistar.sdcs.pa.common:protocol-adapter-lib:3.2.6@aar'
      }
 
-The string passed as an argument of “compile” is made of 4 parts: the package name, the file name, the library version and the @aar suffix. To date (Dic. 2014) 3.3.0 is the latest version of the library, but you should take care of inserting the right version of the library here, the one that matches with the file you just copied in the project.
+The string passed as an argument of `compile` is made of 4 parts: the package name, the file name, the library version and the @aar suffix. To date (Dic. 2014) 3.3.0 is the latest version of the library, but you should take care of inserting the right version of the library here, the one that matches with the file you just copied in the project.
 Finally, you should force a sync of the project with gradle files. You can do this by clicking the specific button.
-If you want to use a directory other than “libs” just use the same name in the build.gradle file.
+If you want to use a directory other than `libs` just use the same name in the `build.gradle` file.
 
 ###Using the library in an application
 Once the previous step is completed, you can start using the Protocol Adapter.
@@ -144,7 +144,7 @@ You may want to make `pa` a field of your class, so you can access its value fro
 Now that the ServiceConnection is implemented, you can bind the Protocol Adapter service. Here you can find a sample code using an explicit intent to bind the service (as required since Android 5.0 Lollipop):
 
     // Create the Intent to start the PA with
-    Intent intent = new Intent().setComponent(new ComponentName("eu.fistar.sdcs.pa", "eu.fistar.sdcs.pa.PAManager"));
+    Intent intent = new Intent().setComponent(new ComponentName("eu.fistar.sdcs.pa", "eu.fistar.sdcs.pa.PAManagerService"));
     
     // Start the Protocol Adapter
     bindService(intent, servConn, Context.BIND_AUTO_CREATE);
