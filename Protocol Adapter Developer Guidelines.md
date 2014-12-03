@@ -1,11 +1,6 @@
 
 #Protocol Adapter - Android Developers Guide
 
-
-Authors:
-Marcello Morena
-Alexandru Serbanati
-
 Software Version: 3.3
 Document version: 0.9 (draft)
 Date: 03/12/2014
@@ -305,3 +300,9 @@ When a registered device loses its connection unexpectedly the Protocol Adapter 
 #####Device Deregistration
 The natural ending of the device operations can occur for different reasons. Whatever these reasons are, the Protocol Adapter takes care of notifying this event by invoking the “deregisterDevice()” method of the IProtocolAdapterListener interface, passing as an argument the DeviceDescription object associated with the deregistered device.
 This marks the end of the device lifecycle. At this point, the device can not send any data, it is not available for any interactions and it is removed from the system.
+
+## Authors, Contact and Contributions
+As the licence reads, this is free software released by Consorzio Roma Ricerche. The authors (Marcello Morena and Alexandru Serbanati) will continuously add support for even more medical devices, but external contributions are welcome. Please have a look at the TODO file on what we are working on and contact us (protocoladapter[at]gmail[dot]com) if you plan on contributing.
+
+## Acknowledgement
+This work was carried out with the support of the FI-STAR project (“Future Internet Social and Technological Alignment Research”), an integrated project funded by the European Commission through the 7th ICT - Framework Programme (318389).
