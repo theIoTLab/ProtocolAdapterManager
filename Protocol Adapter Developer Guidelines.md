@@ -44,7 +44,7 @@ Then you should edit the build.gradle file of your app module and add these line
     }
     dependencies {
       // This is the entry that adds the dependency from the AAR library
-      compile 'eu.fistar.sdcs.pa.common:protocol-adapter-lib:3.2.6@aar'
+      compile 'eu.fistar.sdcs.pa.common:protocol-adapter-lib:3.3.0@aar'
      }
 
 The string passed as an argument of `compile` is made of 4 parts: the package name, the file name, the library version and the @aar suffix. To date (Dic. 2014) 3.3.0 is the latest version of the library, but you should take care of inserting the right version of the library here, the one that matches with the file you just copied in the project.
