@@ -13,9 +13,9 @@ Date: 03/12/2014
 ##What is the Protocol Adapter
 The Protocol Adapter is an M2M data collection software that runs on Android (mainly mobile) devices acting as a gateway for sensor devices. The Protocol Adapter was developed as an open source component of the FI-STAR Frontend Platform, in the frame of the FI-STAR project.
 The Protocol Adapter software architecture has three high-level components: 
-*the Protocol Adapter Manager Service,
-*the Device Adapter and 
-*the Protocol Adapter Library
+* the Protocol Adapter Manager Service,
+* the Device Adapter and 
+* the Protocol Adapter Library
 ###The Protocol Adapter Manager Service
 It includes a Protocol Adapter Manager (PAManager) service and several Device Adapters (DA) on the same Android device. All of them are implemented in separate Android applications and communicate using the AIDL interfaces and common objects included in a separate library. The Protocol Adapter automatically discovers DAs present on the system at startup time and adds them to the pool of available DAs. This makes the architecture modular and expandable. 
 The PAManager has three main roles:
