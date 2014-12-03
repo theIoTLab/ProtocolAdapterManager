@@ -155,7 +155,7 @@ Once the binding is done, Android will call the “onServiceConnected” method 
 ###The IProtocolAdapter AIDL interface
 This is the AIDL interface implemented by the Protocol Adapter and includes all the methods used by Applications to communicate with the PA.
 These methods are:
-* List<DeviceDescription> getConnectedDevices() - Returns a list of all the devices connected at the moment with the Device Adapter.
+* `List<DeviceDescription> getConnectedDevices()` - Returns a list of all the devices connected at the moment with the Device Adapter.
 * Map<String, List<String>> getDADevices() - Returns a map containing the Device ID of all the devices paired with the smartphone that can be handled by at least one DA as the key, and a list of DA IDs of DA that can handle that device as the value.
 * void setDeviceConfig(Map config, String devId) - Set the specific configuration of a device managed by the Device Adapter passing a data structure with key-value pairs containing all possible configuration parameters and  their values, together with the device ID. This should be done before starting the Device  Adapter, otherwise standard configuration will be used. Depending on capabilities, this  could also be invoked when the DA is already running.
 * void startDA(String daId) - Start the Device Adapter operations. This will cause the PA to bind the DA's service and start the DA.
