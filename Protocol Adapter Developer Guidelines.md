@@ -1,9 +1,12 @@
 
 #Protocol Adapter - Android Developers Guide
 
-Software Version: 3.3  
+FI-STAR Phase: Beta
 Document version: 0.9 (draft)  
 Date: 03/12/2014  
+
+##[IMPORTANT] Before you read
+This is a DRAFT document related to the yet UNRELEASED 3.3 version of the source. The purpose of this document is to allow developers to preview the architecture of the Protocol Adapter and familiarize with it. We will delete this line as soon as we will provide the code.
 
 ##What is the Protocol Adapter
 The Protocol Adapter is an M2M data collection software that runs on Android (mainly mobile) devices acting as a gateway for sensor devices. The Protocol Adapter was developed as an open source component of the FI-STAR Frontend Platform, in the frame of the FI-STAR project.
