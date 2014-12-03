@@ -139,7 +139,7 @@ Example code follows:
         }
     };
 
-You may want to make “pa” a field of your class, so you can access its value from everywhere in your class.
+You may want to make `pa` a field of your class, so you can access its value from everywhere in your class.
 
 Now that the ServiceConnection is implemented, you can bind the Protocol Adapter service. Here you can find a sample code using an explicit intent to bind the service (as required since Android 5.0 Lollipop):
 
@@ -221,24 +221,24 @@ Here are the getter methods to retrieve the properties of the Observation:
 ####The Capabilities object
 The Capabilities object is used to describe the capabilities of the device. The Device Adapter creates this object when it starts (usually defining it as a constant) and provides it to the Protocol Adapter.
 Here are the public methods used to access the Capabilities of the Device Adapter:
-* `public boolean hasBlacklist()` - States whether Device Adapter supports blacklist or not. If true, the Device Adapter should provide working implementation of the following methods: `addDeviceToBlackList`, `removeDeviceFromBlacklist`, `getBlacklist`, `setBlacklist`.
-* `public boolean hasWhitelist()` - States whether Device Adapter supports whitelist or not. If true, the Device Adapter should provide working implementation of the following methods: `addDeviceToWhiteList`, `removeDeviceFromWhitelist`, `getWhitelist`, `setWhitelist`.
-* `public boolean isGuiConfigurable()` - States whether Device Adapter supports configuration through a GUI. If true, the Device Adapter should provide working implementation of the following method: `getDAConfigActivityName`.
-* `public int getDeviceConfigurationType()` - Retrieve the information about whether the configuration is supported by the Device Adapter and, if so, what kind of configuration it supports. If supported, the Device Adapter should provide working implementation of the following method: `setDeviceConfig`.  
+* `public boolean hasBlacklist()` - States whether Device Adapter supports blacklist or not. If true, the Device Adapter should provide working implementation of the following methods: `addDeviceToBlackList()`, `removeDeviceFromBlacklist()`, `getBlacklist()`, `setBlacklist()`.
+* `public boolean hasWhitelist()` - States whether Device Adapter supports whitelist or not. If true, the Device Adapter should provide working implementation of the following methods: `addDeviceToWhiteList()`, `removeDeviceFromWhitelist()`, `getWhitelist()`, `setWhitelist()`.
+* `public boolean isGuiConfigurable()` - States whether Device Adapter supports configuration through a GUI. If true, the Device Adapter should provide working implementation of the following method: `getDAConfigActivityName()`.
+* `public int getDeviceConfigurationType()` - Retrieve the information about whether the configuration is supported by the Device Adapter and, if so, what kind of configuration it supports. If supported, the Device Adapter should provide working implementation of the following method: `setDeviceConfig()`.  
 Acceptables values are between 0 and 3:
     * 0 = CONFIG_NOT_SUPPORTED
     * 1 = CONFIG_RUNTIME_ONLY, configuration can only be made at runtime
     * 2 = CONFIG_STARTUP_ONLY, configuration can only be made upon startup
     * 3 = CONFIG_STARTUP_AND_RUNTIME, configuration can be made both at runtime or upon startup
-* `public boolean supportCommands()` - States whether the Device Adapter supports the sending of commands. If supported, the Device Adapter should provide working implementation of the following methods: `execCommand`, `getCommandList`.
-* `public boolean isCommunicationInitiator()` - States whether the Device Adapter is the initiator of the communication with the devices (it connects to the devices) or if it's the target (the devices automatically connect to it). If true, the Device Adapter should provide working implementation of the following methods: `connectDev`, `forceConnectDev`, `disconnectDev`, `getConnectedDevices`.
-* `public boolean canDetectDevice()` - States whether the Device Adapter supports the detection of nearby devices. If supported, the Device Adapter should provide working implementation of the following methods: `detectDevices`.
+* `public boolean supportCommands()` - States whether the Device Adapter supports the sending of commands. If supported, the Device Adapter should provide working implementation of the following methods: `execCommand()`, `getCommandList()`.
+* `public boolean isCommunicationInitiator()` - States whether the Device Adapter is the initiator of the communication with the devices (it connects to the devices) or if it's the target (the devices automatically connect to it). If true, the Device Adapter should provide working implementation of the following methods: `connectDev()`, `forceConnectDev()`, `disconnectDev()`, `getConnectedDevices()`.
+* `public boolean canDetectDevice()` - States whether the Device Adapter supports the detection of nearby devices. If supported, the Device Adapter should provide working implementation of the following methods: `detectDevices()`.
 * `public boolean needsPreviousPairing()` - States whether the Device Adapter needs the devices to be already paired in order to use them.
-* `public boolean canMonitorDisconnection()` - States whether the Device Adapter can monitor the disconnection of the devices. If supported, the Device Adapter should call the following methods upon device disconnection: `deviceDisconnected`.
+* `public boolean canMonitorDisconnection()` - States whether the Device Adapter can monitor the disconnection of the devices. If supported, the Device Adapter should call the following methods upon device disconnection: `deviceDisconnected()`.
 * `public String getFriendlyName()` - Retrieve the Friendly Name of the Device Adapter, one that is both human readable and self-explanatory.
 * `public String getActionName()` - Retrieve the Action Name to use in order to bind the Device Adapter Service. Please note that since Android 5.0 (Lollipop) implicit intents are not supported anymore to bind services, so the action name must be an explicit one.
 * `public String getPackageName()` - Retrieve the Package Name of the Device Adapter.
-* `public boolean canProvideAvailableDevice()` - States whether the Device Adapter has the ability to recognise if it can handle a device or not, and consequently if it can provide the list of the Available Devices or not. If supported, the Device Adapter should provide working implementation of the following methods: `getPairedDevicesAddress`.
+* `public boolean canProvideAvailableDevice()` - States whether the Device Adapter has the ability to recognise if it can handle a device or not, and consequently if it can provide the list of the Available Devices or not. If supported, the Device Adapter should provide working implementation of the following methods: `getPairedDevicesAddress()`.
 
 ##Using the Protocol Adapter
 ###Installation
