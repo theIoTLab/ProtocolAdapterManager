@@ -224,12 +224,12 @@ Here are the public methods used to access the Capabilities of the Device Adapte
 * `public boolean hasBlacklist()` - States whether Device Adapter supports blacklist or not. If true, the Device Adapter should provide working implementation of the following methods: addDeviceToBlackList, removeDeviceFromBlacklist, getBlacklist, setBlacklist.
 * `public boolean hasWhitelist()` - States whether Device Adapter supports whitelist or not. If true, the Device Adapter should provide working implementation of the following methods: addDeviceToWhiteList, removeDeviceFromWhitelist, getWhitelist, setWhitelist.
 * `public boolean isGuiConfigurable()` - States whether Device Adapter supports configuration through a GUI. If true, the Device Adapter should provide working implementation of the following method: getDAConfigActivityName.
-* `public int getDeviceConfigurationType()` - Retrieve the information about whether the configuration is supported by the Device Adapter and, if so, what kind of configuration it supports. If supported, the Device Adapter should provide working implementation of the following method: setDeviceConfig.
+* `public int getDeviceConfigurationType()` - Retrieve the information about whether the configuration is supported by the Device Adapter and, if so, what kind of configuration it supports. If supported, the Device Adapter should provide working implementation of the following method: setDeviceConfig.  
 Acceptables values are between 0 and 3:
-0 = CONFIG_NOT_SUPPORTED
-1 = CONFIG_RUNTIME_ONLY, configuration can only be made at runtime
-2 = CONFIG_STARTUP_ONLY, configuration can only be made upon startup
-3 = CONFIG_STARTUP_AND_RUNTIME, configuration can be made both at runtime or upon startup
+    * 0 = CONFIG_NOT_SUPPORTED
+    * 1 = CONFIG_RUNTIME_ONLY, configuration can only be made at runtime
+    * 2 = CONFIG_STARTUP_ONLY, configuration can only be made upon startup
+    * 3 = CONFIG_STARTUP_AND_RUNTIME, configuration can be made both at runtime or upon startup
 * `public boolean supportCommands()` - States whether the Device Adapter supports the sending of commands. If supported, the Device Adapter should provide working implementation of the following methods: execCommand, getCommandList.
 * `public boolean isCommunicationInitiator()` - States whether the Device Adapter is the initiator of the communication with the devices (it connects to the devices) or if it's the target (the devices automatically connect to it). If true, the Device Adapter should provide working implementation of the following methods: connectDev, forceConnectDev, disconnectDev, getConnectedDevices.
 * `public boolean canDetectDevice()` - States whether the Device Adapter supports the detection of nearby devices. If supported, the Device Adapter should provide working implementation of the following methods: detectDevices.
