@@ -156,38 +156,38 @@ Once the binding is done, Android will call the “onServiceConnected” method 
 This is the AIDL interface implemented by the Protocol Adapter and includes all the methods used by Applications to communicate with the PA.
 These methods are:
 * `List<DeviceDescription> getConnectedDevices()` - Returns a list of all the devices connected at the moment with the Device Adapter.
-* Map<String, List<String>> getDADevices() - Returns a map containing the Device ID of all the devices paired with the smartphone that can be handled by at least one DA as the key, and a list of DA IDs of DA that can handle that device as the value.
-* void setDeviceConfig(Map config, String devId) - Set the specific configuration of a device managed by the Device Adapter passing a data structure with key-value pairs containing all possible configuration parameters and  their values, together with the device ID. This should be done before starting the Device  Adapter, otherwise standard configuration will be used. Depending on capabilities, this  could also be invoked when the DA is already running.
-* void startDA(String daId) - Start the Device Adapter operations. This will cause the PA to bind the DA's service and start the DA.
-* void stopDA(String daId) - Stop the Device Adapter operations. This will cause the PA to stop the DA and unbind the related service.
-* Map<String, Capabilities> getAvailableDAs() - Return a Map with all the available DAs in the system. The keys of the Map are the DAs' ID and the values are the related Capabilities object.
-* Capabilities getDACapabilities(String daId) - Return the object describing the capabilities of the specified DA.
-* void connectDev(String devId) - Connect to the device whose MAC Address is passed as an argument.
-* void forceConnectDev(String devId, String daId) - Force connection to the device whose devID is passed as an argument using the specified Device Adapter.
-* void disconnectDev(String devId) - Disconnect from the device whose MAC Address is passed as an argument.
-* void registerPAListener(IBinder application) - Called by the Application to register the binder representing its interface inside the Protocol Adapter.
-* void addDeviceToWhitelist(String devId) - Add a device to the Device Adapter whitelist, passing its device ID as an argument. Please note that this insertion will persist, even through Device Adapter reboots, until the device it's removed from the list. Every device adapter takes care of checking the format of the address passed as an argument and, if it does not support that kind of address, it will safely ignore that address.
-* void removeDeviceFromWhitelist(String devId) - Remove from the whitelist the device whose device ID is passed as an argument. If the device is not in the list, the request will be ignored.
-* List<String> getWhitelist() - Retrieve all the devices in the whitelist of the DA. If there's no devices, an empty list is returned.
-* void setWhitelist(List<String> whiteList) - Set a list of devices in the whitelist all together, passing their device IDs as an argument. Please note that this insertion will persist, even through Device Adapter reboots, until the devices are removed from the list. Every device adapter will take care of checking the format of the address passed as an argument one by one and, if it does not support that kind of address, it will safely ignore that address.
-* void addDeviceToBlackList(String devId) - Add a device to the Device Adapter blacklist, passing its device ID as an argument. Please note that this insertion will persist, even through Device Adapter reboots, until the device it's removed from the list. Every device adapter will take care of checking the format of the address passed as an argument and, if it does not support that kind of address, it will safely ignore that address.
-* void removeDeviceFromBlacklist(String devId) - Remove from the blacklist the device whose device ID is passed as an argument. If the device is not in the list, the request can be ignored.
-* List<String> getBlacklist() - Retrieve all the devices in the blacklist of the DA. If there's no devices, an empty list is returned.
-* void setBlackList(List<String> blackList) - Set a list of devices in the blacklist all together, passing their device IDs as an argument. Please note that this insertion will persist, even through Device Adapter reboots, until the devices are removed from the list. Every device adapter will take care of checking the format of the address passed as an argument one by one and, if it does not support that kind of address, it will safely ignore that address.
-* List<String> getCommandList(String daId) - Return all the commands supported by the Device Adapter for its devices.
-* void execCommand(String command, String parameter, String devId) - Execute a command supported by the device. You can also specify a parameter, if the command allows or requires it.
+* `Map<String, List<String>> getDADevices()` - Returns a map containing the Device ID of all the devices paired with the smartphone that can be handled by at least one DA as the key, and a list of DA IDs of DA that can handle that device as the value.
+* `void setDeviceConfig(Map config, String devId)` - Set the specific configuration of a device managed by the Device Adapter passing a data structure with key-value pairs containing all possible configuration parameters and  their values, together with the device ID. This should be done before starting the Device  Adapter, otherwise standard configuration will be used. Depending on capabilities, this  could also be invoked when the DA is already running.
+* `void startDA(String daId)` - Start the Device Adapter operations. This will cause the PA to bind the DA's service and start the DA.
+* `void stopDA(String daId)` - Stop the Device Adapter operations. This will cause the PA to stop the DA and unbind the related service.
+* `Map<String, Capabilities> getAvailableDAs()` - Return a Map with all the available DAs in the system. The keys of the Map are the DAs' ID and the values are the related Capabilities object.
+* `Capabilities getDACapabilities(String daId)` - Return the object describing the capabilities of the specified DA.
+* `void connectDev(String devId)` - Connect to the device whose MAC Address is passed as an argument.
+* `void forceConnectDev(String devId, String daId)` - Force connection to the device whose devID is passed as an argument using the specified Device Adapter.
+* `void disconnectDev(String devId)` - Disconnect from the device whose MAC Address is passed as an argument.
+* `void registerPAListener(IBinder application)` - Called by the Application to register the binder representing its interface inside the Protocol Adapter.
+* `void addDeviceToWhitelist(String devId)` - Add a device to the Device Adapter whitelist, passing its device ID as an argument. Please note that this insertion will persist, even through Device Adapter reboots, until the device it's removed from the list. Every device adapter takes care of checking the format of the address passed as an argument and, if it does not support that kind of address, it will safely ignore that address.
+* `void removeDeviceFromWhitelist(String devId)` - Remove from the whitelist the device whose device ID is passed as an argument. If the device is not in the list, the request will be ignored.
+* `List<String> getWhitelist()` - Retrieve all the devices in the whitelist of the DA. If there's no devices, an empty list is returned.
+* `void setWhitelist(List<String> whiteList)` - Set a list of devices in the whitelist all together, passing their device IDs as an argument. Please note that this insertion will persist, even through Device Adapter reboots, until the devices are removed from the list. Every device adapter will take care of checking the format of the address passed as an argument one by one and, if it does not support that kind of address, it will safely ignore that address.
+* `void addDeviceToBlackList(String devId)` - Add a device to the Device Adapter blacklist, passing its device ID as an argument. Please note that this insertion will persist, even through Device Adapter reboots, until the device it's removed from the list. Every device adapter will take care of checking the format of the address passed as an argument and, if it does not support that kind of address, it will safely ignore that address.
+* `void removeDeviceFromBlacklist(String devId)` - Remove from the blacklist the device whose device ID is passed as an argument. If the device is not in the list, the request can be ignored.
+* `List<String> getBlacklist()` - Retrieve all the devices in the blacklist of the DA. If there's no devices, an empty list is returned.
+* `void setBlackList(List<String> blackList)` - Set a list of devices in the blacklist all together, passing their device IDs as an argument. Please note that this insertion will persist, even through Device Adapter reboots, until the devices are removed from the list. Every device adapter will take care of checking the format of the address passed as an argument one by one and, if it does not support that kind of address, it will safely ignore that address.
+* `List<String> getCommandList(String daId)` - Return all the commands supported by the Device Adapter for its devices.
+* `void execCommand(String command, String parameter, String devId)` - Execute a command supported by the device. You can also specify a parameter, if the command allows or requires it.
 
 Remember that methods of the IProtocolAdapter interface are not guaranteed to return immediately when they are called and may block. So, if you are calling them from inside an Activity and you are concerned about “Application Not Responding” errors (you should really be), you better call them from a thread other than the UI one.
 
 ###The IProtocolAdapterListener AIDL Interface
 This is the AIDL interface implemented by an Application and includes all the methods used by Protocol Adapter to communicate with Applications.
 These methods are:
-void registerDevice(DeviceDescription devDesc) - Called by Protocol Adapter to register a new device.
-void pushData(List<Observation> observations, DeviceDescription devDesc) - Called by Protocol Adapter to push new measurements data coming from the device.
-void deregisterDevice(DeviceDescription devDesc) - Called by Protocol Adapter to deregister a device with the protocol adapter when it is not available anymore.
-void registerDeviceProperties(DeviceDescription devDesc) - Called by Protocol Adapter to register a new property for a device. This is not used at the moment, since all the job is done with registerDevice.
-void deviceDisconnected(DeviceDescription devDesc) - Called by Protocol Adapter when a device disconnects.
-void log(int logLevel, String daId, String message) - Called by Protocol Adapter to forward to the Application a log message received from one of the Device Adapters or generated locally.
+* `void registerDevice(DeviceDescription devDesc)` - Called by Protocol Adapter to register a new device.
+* `void pushData(List<Observation> observations, DeviceDescription devDesc)` - Called by Protocol Adapter to push new measurements data coming from the device.
+* `void deregisterDevice(DeviceDescription devDesc)` - Called by Protocol Adapter to deregister a device with the protocol adapter when it is not available anymore.
+* `void registerDeviceProperties(DeviceDescription devDesc)` - Called by Protocol Adapter to register a new property for a device. This is not used at the moment, since all the job is done with registerDevice.
+* `void deviceDisconnected(DeviceDescription devDesc)` - Called by Protocol Adapter when a device disconnects.
+* `void log(int logLevel, String daId, String message)` - Called by Protocol Adapter to forward to the Application a log message received from one of the Device Adapters or generated locally.
 
 ###The Parcelable Objects
 The library includes a set of objects used to communicate data and represent devices, capabilities and events. Because these objects must flow through AIDL interfaces, they all implements the Parcelable interface, as required by Android. Parcel is the Android proprietary lightweight serialization standard and objects implementing the Parcelable interface are required to also implements a number of methods used to perform the serialization of an object into a Parcel and the deseralization of a Parcel into an object. Follows a brief description of all these objects.
@@ -195,50 +195,50 @@ The library includes a set of objects used to communicate data and represent dev
 ####The DeviceDescription object
 The DeviceDescription object represents a definition of a device. A device definition is used to represent a device and all its properties, such as sensors.
 Here are the getter methods to retrieve the properties of the DeviceDescription:
-public String getDeviceID() - Returns the device unique identifier as provided by the device.
-public String getSerialNumber() - Returns the model number of the device.
-public String getModelName() - Returns the model name of the device.
-public String getManufacturerName() - Returns the manufacturer name of the device.
-public List<SensorDescription> getSensorList() - Returns the list of sensors belonging to the device.
-public String getAddress() - Returns the physical address of the device.
+* `public String getDeviceID()` - Returns the device unique identifier as provided by the device.
+* `public String getSerialNumber()` - Returns the model number of the device.
+* `public String getModelName()` - Returns the model name of the device.
+* `public String getManufacturerName()` - Returns the manufacturer name of the device.
+* `public List<SensorDescription> getSensorList()` - Returns the list of sensors belonging to the device.
+* `public String getAddress()` - Returns the physical address of the device.
 
 ####The SensorDescription object
 The SensorDescription object defines a sensor. A sensor definition is used to represent a sensor of a device and its characteristics.
 Here are the getter methods to retrieve the properties of the SensorDescription:
-public String getSensorName() - Returns the name of the sensor (i.e. Pulsimeter).
-public String getMeasurementUnit() - Returns the unit of measure used by the sensor (i.e. Bpm).
-public String getPropertyName() - Returns the property name of the sensor (i.e. Heart Rate).
+* `public String getSensorName()` - Returns the name of the sensor (i.e. Pulsimeter).
+* `public String getMeasurementUnit()` - Returns the unit of measure used by the sensor (i.e. Bpm).
+* `public String getPropertyName()` - Returns the property name of the sensor (i.e. Heart Rate).
 
 ####The Observation object
 The Observation object describes observations. An observation is used to encapsulate one or more measurements coming from a sensor and carrying some meta data together with the measurements.
 Here are the getter methods to retrieve the properties of the Observation:
-public String getPropertyName() - Returns the property name (same as propertyName in SensorDescription).
-public String getMeasurementUnit() - Returns the unit of measure of the property (same as measurementUnit in SensorDescription).
-public List<String> getValues() - Returns the values observed for the property.
-public long getPhenomenonTime() - Returns the timestamp associated with the measurement.
-public long getDuration() - Returns the duration of the measurement.
+* `public String getPropertyName()` - Returns the property name (same as propertyName in SensorDescription).
+* `public String getMeasurementUnit()` - Returns the unit of measure of the property (same as measurementUnit in SensorDescription).
+* `public List<String> getValues()` - Returns the values observed for the property.
+* `public long getPhenomenonTime()` - Returns the timestamp associated with the measurement.
+* `public long getDuration()` - Returns the duration of the measurement.
 
 ####The Capabilities object
 The Capabilities object is used to describe the capabilities of the device. The Device Adapter creates this object when it starts (usually defining it as a constant) and provides it to the Protocol Adapter.
 Here are the public methods used to access the Capabilities of the Device Adapter:
-public boolean hasBlacklist() - States whether Device Adapter supports blacklist or not. If true, the Device Adapter should provide working implementation of the following methods: addDeviceToBlackList, removeDeviceFromBlacklist, getBlacklist, setBlacklist.
-public boolean hasWhitelist() - States whether Device Adapter supports whitelist or not. If true, the Device Adapter should provide working implementation of the following methods: addDeviceToWhiteList, removeDeviceFromWhitelist, getWhitelist, setWhitelist.
-public boolean isGuiConfigurable() - States whether Device Adapter supports configuration through a GUI. If true, the Device Adapter should provide working implementation of the following method: getDAConfigActivityName.
-public int getDeviceConfigurationType() - Retrieve the information about whether the configuration is supported by the Device Adapter and, if so, what kind of configuration it supports. If supported, the Device Adapter should provide working implementation of the following method: setDeviceConfig.
+* `public boolean hasBlacklist()` - States whether Device Adapter supports blacklist or not. If true, the Device Adapter should provide working implementation of the following methods: addDeviceToBlackList, removeDeviceFromBlacklist, getBlacklist, setBlacklist.
+* `public boolean hasWhitelist()` - States whether Device Adapter supports whitelist or not. If true, the Device Adapter should provide working implementation of the following methods: addDeviceToWhiteList, removeDeviceFromWhitelist, getWhitelist, setWhitelist.
+* `public boolean isGuiConfigurable()` - States whether Device Adapter supports configuration through a GUI. If true, the Device Adapter should provide working implementation of the following method: getDAConfigActivityName.
+* `public int getDeviceConfigurationType()` - Retrieve the information about whether the configuration is supported by the Device Adapter and, if so, what kind of configuration it supports. If supported, the Device Adapter should provide working implementation of the following method: setDeviceConfig.
 Acceptables values are between 0 and 3:
 0 = CONFIG_NOT_SUPPORTED
 1 = CONFIG_RUNTIME_ONLY, configuration can only be made at runtime
 2 = CONFIG_STARTUP_ONLY, configuration can only be made upon startup
 3 = CONFIG_STARTUP_AND_RUNTIME, configuration can be made both at runtime or upon startup
-public boolean supportCommands() - States whether the Device Adapter supports the sending of commands. If supported, the Device Adapter should provide working implementation of the following methods: execCommand, getCommandList.
-public boolean isCommunicationInitiator() - States whether the Device Adapter is the initiator of the communication with the devices (it connects to the devices) or if it's the target (the devices automatically connect to it). If true, the Device Adapter should provide working implementation of the following methods: connectDev, forceConnectDev, disconnectDev, getConnectedDevices.
-public boolean canDetectDevice() - States whether the Device Adapter supports the detection of nearby devices. If supported, the Device Adapter should provide working implementation of the following methods: detectDevices.
-public boolean needsPreviousPairing() - States whether the Device Adapter needs the devices to be already paired in order to use them.
-public boolean canMonitorDisconnection() - States whether the Device Adapter can monitor the disconnection of the devices. If supported, the Device Adapter should call the following methods upon device disconnection: deviceDisconnected.
-public String getFriendlyName() - Retrieve the Friendly Name of the Device Adapter, one that is both human readable and self-explanatory.
-public String getActionName() - Retrieve the Action Name to use in order to bind the Device Adapter Service. Please note that since Android 5.0 (Lollipop) implicit intents are not supported anymore to bind services, so the action name must be an explicit one.
-public String getPackageName() - Retrieve the Package Name of the Device Adapter.
-public boolean canProvideAvailableDevice() - States whether the Device Adapter has the ability to recognise if it can handle a device or not, and consequently if it can provide the list of the Available Devices or not. If supported, the Device Adapter should provide working implementation of the following methods: getPairedDevicesAddress.
+* `public boolean supportCommands()` - States whether the Device Adapter supports the sending of commands. If supported, the Device Adapter should provide working implementation of the following methods: execCommand, getCommandList.
+* `public boolean isCommunicationInitiator()` - States whether the Device Adapter is the initiator of the communication with the devices (it connects to the devices) or if it's the target (the devices automatically connect to it). If true, the Device Adapter should provide working implementation of the following methods: connectDev, forceConnectDev, disconnectDev, getConnectedDevices.
+* `public boolean canDetectDevice()` - States whether the Device Adapter supports the detection of nearby devices. If supported, the Device Adapter should provide working implementation of the following methods: detectDevices.
+* `public boolean needsPreviousPairing()` - States whether the Device Adapter needs the devices to be already paired in order to use them.
+* `public boolean canMonitorDisconnection()` - States whether the Device Adapter can monitor the disconnection of the devices. If supported, the Device Adapter should call the following methods upon device disconnection: deviceDisconnected.
+* `public String getFriendlyName()` - Retrieve the Friendly Name of the Device Adapter, one that is both human readable and self-explanatory.
+* `public String getActionName()` - Retrieve the Action Name to use in order to bind the Device Adapter Service. Please note that since Android 5.0 (Lollipop) implicit intents are not supported anymore to bind services, so the action name must be an explicit one.
+* `public String getPackageName()` - Retrieve the Package Name of the Device Adapter.
+* `public boolean canProvideAvailableDevice()` - States whether the Device Adapter has the ability to recognise if it can handle a device or not, and consequently if it can provide the list of the Available Devices or not. If supported, the Device Adapter should provide working implementation of the following methods: getPairedDevicesAddress.
 
 ##Using the Protocol Adapter
 ###Installation
