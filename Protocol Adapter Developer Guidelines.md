@@ -1,6 +1,5 @@
 
-#Protocol Adapter
-#Android Developers Guide
+#Protocol Adapter - Android Developers Guide
 
 
 Authors:
