@@ -1,7 +1,7 @@
 
 #Protocol Adapter - Android Developers Guide
 
-FI-STAR Phase: Beta
+FI-STAR Phase: Beta  
 Document version: 0.9 (draft)  
 Date: 03/12/2014  
 
