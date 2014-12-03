@@ -13,15 +13,15 @@ Date: 03/12/2014
 ##What is the Protocol Adapter
 The Protocol Adapter is an M2M data collection software that runs on Android (mainly mobile) devices acting as a gateway for sensor devices. The Protocol Adapter was developed as an open source component of the FI-STAR Frontend Platform, in the frame of the FI-STAR project.
 The Protocol Adapter software architecture has three high-level components: 
-the Protocol Adapter Manager Service,
-the Device Adapter and 
-the Protocol Adapter Library
+*the Protocol Adapter Manager Service,
+*the Device Adapter and 
+*the Protocol Adapter Library
 ###The Protocol Adapter Manager Service
 It includes a Protocol Adapter Manager (PAManager) service and several Device Adapters (DA) on the same Android device. All of them are implemented in separate Android applications and communicate using the AIDL interfaces and common objects included in a separate library. The Protocol Adapter automatically discovers DAs present on the system at startup time and adds them to the pool of available DAs. This makes the architecture modular and expandable. 
 The PAManager has three main roles:
-to provide a single entry poitn for data-collection applications 
-to provide device management interfaces for the application
-to manage the lifecycle of the DAs. 
+*to provide a single entry poitn for data-collection applications 
+*to provide device management interfaces for the application
+*to manage the lifecycle of the DAs. 
 
 ###The Device Adapter
 A Device Adapter is a software component that manages low-level connections to sensor devices of a given kind and collects data from them. The collected data resulting from the measurements carried out by the sensor devices are provided to the Protocol Adapter with a well-known data structure (i.e. Java object) called Observation. 
@@ -159,27 +159,27 @@ Once the binding is done, Android will call the “onServiceConnected” method 
 ###The IProtocolAdapter AIDL interface
 This is the AIDL interface implemented by the Protocol Adapter and includes all the methods used by Applications to communicate with the PA.
 These methods are:
-List<DeviceDescription> getConnectedDevices() - Returns a list of all the devices connected at the moment with the Device Adapter.
-Map<String, List<String>> getDADevices() - Returns a map containing the Device ID of all the devices paired with the smartphone that can be handled by at least one DA as the key, and a list of DA IDs of DA that can handle that device as the value.
-void setDeviceConfig(Map config, String devId) - Set the specific configuration of a device managed by the Device Adapter passing a data structure with key-value pairs containing all possible configuration parameters and  their values, together with the device ID. This should be done before starting the Device  Adapter, otherwise standard configuration will be used. Depending on capabilities, this  could also be invoked when the DA is already running.
+*List<DeviceDescription> getConnectedDevices() - Returns a list of all the devices connected at the moment with the Device Adapter.
+*Map<String, List<String>> getDADevices() - Returns a map containing the Device ID of all the devices paired with the smartphone that can be handled by at least one DA as the key, and a list of DA IDs of DA that can handle that device as the value.
+*void setDeviceConfig(Map config, String devId) - Set the specific configuration of a device managed by the Device Adapter passing a data structure with key-value pairs containing all possible configuration parameters and  their values, together with the device ID. This should be done before starting the Device  Adapter, otherwise standard configuration will be used. Depending on capabilities, this  could also be invoked when the DA is already running.
 void startDA(String daId) - Start the Device Adapter operations. This will cause the PA to bind the DA's service and start the DA.
-void stopDA(String daId) - Stop the Device Adapter operations. This will cause the PA to stop the DA and unbind the related service.
-Map<String, Capabilities> getAvailableDAs() - Return a Map with all the available DAs in the system. The keys of the Map are the DAs' ID and the values are the related Capabilities object.
-Capabilities getDACapabilities(String daId) - Return the object describing the capabilities of the specified DA.
-void connectDev(String devId) - Connect to the device whose MAC Address is passed as an argument.
-void forceConnectDev(String devId, String daId) - Force connection to the device whose devID is passed as an argument using the specified Device Adapter.
-void disconnectDev(String devId) - Disconnect from the device whose MAC Address is passed as an argument.
-void registerPAListener(IBinder application) - Called by the Application to register the binder representing its interface inside the Protocol Adapter.
-void addDeviceToWhitelist(String devId) - Add a device to the Device Adapter whitelist, passing its device ID as an argument. Please note that this insertion will persist, even through Device Adapter reboots, until the device it's removed from the list. Every device adapter takes care of checking the format of the address passed as an argument and, if it does not support that kind of address, it will safely ignore that address.
-void removeDeviceFromWhitelist(String devId) - Remove from the whitelist the device whose device ID is passed as an argument. If the device is not in the list, the request will be ignored.
-List<String> getWhitelist() - Retrieve all the devices in the whitelist of the DA. If there's no devices, an empty list is returned.
-void setWhitelist(List<String> whiteList) - Set a list of devices in the whitelist all together, passing their device IDs as an argument. Please note that this insertion will persist, even through Device Adapter reboots, until the devices are removed from the list. Every device adapter will take care of checking the format of the address passed as an argument one by one and, if it does not support that kind of address, it will safely ignore that address.
-void addDeviceToBlackList(String devId) - Add a device to the Device Adapter blacklist, passing its device ID as an argument. Please note that this insertion will persist, even through Device Adapter reboots, until the device it's removed from the list. Every device adapter will take care of checking the format of the address passed as an argument and, if it does not support that kind of address, it will safely ignore that address.
+*void stopDA(String daId) - Stop the Device Adapter operations. This will cause the PA to stop the DA and unbind the related service.
+*Map<String, Capabilities> getAvailableDAs() - Return a Map with all the available DAs in the system. The keys of the Map are the DAs' ID and the values are the related Capabilities object.
+*Capabilities getDACapabilities(String daId) - Return the object describing the capabilities of the specified DA.
+*void connectDev(String devId) - Connect to the device whose MAC Address is passed as an argument.
+*void forceConnectDev(String devId, String daId) - Force connection to the device whose devID is passed as an argument using the specified Device Adapter.
+*void disconnectDev(String devId) - Disconnect from the device whose MAC Address is passed as an argument.
+*void registerPAListener(IBinder application) - Called by the Application to register the binder representing its interface inside the Protocol Adapter.
+*void addDeviceToWhitelist(String devId) - Add a device to the Device Adapter whitelist, passing its device ID as an argument. Please note that this insertion will persist, even through Device Adapter reboots, until the device it's removed from the list. Every device adapter takes care of checking the format of the address passed as an argument and, if it does not support that kind of address, it will safely ignore that address.
+*void removeDeviceFromWhitelist(String devId) - Remove from the whitelist the device whose device ID is passed as an argument. If the device is not in the list, the request will be ignored.
+*List<String> getWhitelist() - Retrieve all the devices in the whitelist of the DA. If there's no devices, an empty list is returned.
+*void setWhitelist(List<String> whiteList) - Set a list of devices in the whitelist all together, passing their device IDs as an argument. Please note that this insertion will persist, even through Device Adapter reboots, until the devices are removed from the list. Every device adapter will take care of checking the format of the address passed as an argument one by one and, if it does not support that kind of address, it will safely ignore that address.
+*void addDeviceToBlackList(String devId) - Add a device to the Device Adapter blacklist, passing its device ID as an argument. Please note that this insertion will persist, even through Device Adapter reboots, until the device it's removed from the list. Every device adapter will take care of checking the format of the address passed as an argument and, if it does not support that kind of address, it will safely ignore that address.
 void removeDeviceFromBlacklist(String devId) - Remove from the blacklist the device whose device ID is passed as an argument. If the device is not in the list, the request can be ignored.
-List<String> getBlacklist() - Retrieve all the devices in the blacklist of the DA. If there's no devices, an empty list is returned.
-void setBlackList(List<String> blackList) - Set a list of devices in the blacklist all together, passing their device IDs as an argument. Please note that this insertion will persist, even through Device Adapter reboots, until the devices are removed from the list. Every device adapter will take care of checking the format of the address passed as an argument one by one and, if it does not support that kind of address, it will safely ignore that address.
-List<String> getCommandList(String daId) - Return all the commands supported by the Device Adapter for its devices.
-void execCommand(String command, String parameter, String devId) - Execute a command supported by the device. You can also specify a parameter, if the command allows or requires it.
+*List<String> getBlacklist() - Retrieve all the devices in the blacklist of the DA. If there's no devices, an empty list is returned.
+*void setBlackList(List<String> blackList) - Set a list of devices in the blacklist all together, passing their device IDs as an argument. Please note that this insertion will persist, even through Device Adapter reboots, until the devices are removed from the list. Every device adapter will take care of checking the format of the address passed as an argument one by one and, if it does not support that kind of address, it will safely ignore that address.
+*List<String> getCommandList(String daId) - Return all the commands supported by the Device Adapter for its devices.
+*void execCommand(String command, String parameter, String devId) - Execute a command supported by the device. You can also specify a parameter, if the command allows or requires it.
 
 Remember that methods of the IProtocolAdapter interface are not guaranteed to return immediately when they are called and may block. So, if you are calling them from inside an Activity and you are concerned about “Application Not Responding” errors (you should really be), you better call them from a thread other than the UI one.
 
