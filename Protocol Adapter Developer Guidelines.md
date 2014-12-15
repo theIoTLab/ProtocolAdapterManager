@@ -31,8 +31,8 @@ The Protocol Adapter library is a library that contains all the objects and faci
 
 ##Working with the Protocol Adapter Library
 ###How to include the library in a project
-The first thing to do in order to work with the Protocol Adapter is to include the Protocol Adapter Library inside your project. Since Android Studio is now (Dic. 2014) in the latest stages of beta and it would soon released as stable, and since we used Android Studio as our IDE when developing the entire project, we will cover here the AAR package inclusion on Android Studio. For other IDEs, you should be able to find abundant resources on-line.
-Unluckily, to date (Dic. 2014) Android Studio does not offer a straightforward method to include an AAR package, but nevertheless the process is quite simple.
+The first thing to do in order to work with the Protocol Adapter is to include the Protocol Adapter Library inside your project. Since Android Studio is now (Dec. 2014) in the latest stages of beta and it would soon released as stable, and since we used Android Studio as our IDE when developing the entire project, we will cover here the AAR package inclusion on Android Studio. For other IDEs, you should be able to find abundant resources on-line.
+Unluckily, to date (Dec. 2014) Android Studio does not offer a straightforward method to include an AAR package, but nevertheless the process is quite simple.
 
 First of all you should copy the AAR file inside the `libs` directory of your app module. You can do this by simply copy-pasting the file from your file manager directly in the IDE. 
 
@@ -47,7 +47,7 @@ Then you should edit the build.gradle file of your app module and add these line
       compile 'eu.fistar.sdcs.pa.common:protocol-adapter-lib:3.3.0@aar'
      }
 
-The string passed as an argument of `compile` is made of 4 parts: the package name, the file name, the library version and the @aar suffix. To date (Dic. 2014) 3.3.0 is the latest version of the library, but you should take care of inserting the right version of the library here, the one that matches with the file you just copied in the project.
+The string passed as an argument of `compile` is made of 4 parts: the package name, the file name, the library version and the @aar suffix. To date (Dec. 2014) 3.3.0 is the latest version of the library, but you should take care of inserting the right version of the library here, the one that matches with the file you just copied in the project.
 Finally, you should force a sync of the project with gradle files. You can do this by clicking the specific button.
 If you want to use a directory other than `libs` just use the same name in the `build.gradle` file.
 
