@@ -29,127 +29,824 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
+import android.content.SharedPreferences;
 import android.os.Handler;
+import android.os.HandlerThread;
 import android.os.IBinder;
+import android.os.RemoteException;
 import android.util.Log;
 
 import org.json.JSONArray;
 import org.json.JSONException;
-import org.json.JSONObject;
 
-import java.util.Date;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.concurrent.CopyOnWriteArrayList;
 
-import eu.fistar.sdcs.pa.PAAndroidConstants.*;
-import eu.fistar.sdcs.pa.da.IDeviceAdapter;
+import eu.fistar.sdcs.pa.common.Capabilities;
+import eu.fistar.sdcs.pa.common.IProtocolAdapter;
+import eu.fistar.sdcs.pa.common.IProtocolAdapterListener;
+import eu.fistar.sdcs.pa.common.PAAndroidConstants;
+import eu.fistar.sdcs.pa.common.PAAndroidConstants.*;
+import eu.fistar.sdcs.pa.common.DeviceDescription;
+import eu.fistar.sdcs.pa.common.Observation;
+import eu.fistar.sdcs.pa.common.IDeviceAdapterListener;
+import eu.fistar.sdcs.pa.common.da.IDeviceAdapter;
 
 /**
- * This class is the implementation of the Protocol Adapter. For now, it only controls Device
- * Adapters for Bluetooth medical devices
+ * This class is the implementation of the Protocol Adapter. It is a bound service which can,
+ * in turn, bind other services (the Device Adapters). It implements both the IProtocolAdapter
+ * interface for communication with the application, and the IDeviceAdapterListener interface for
+ * communication with Device Adapters.
  *
  * @author Marcello Morena
  * @author Alexandru Serbanati
  */
-public class PAManagerService extends Service implements IProtocolAdapter {
+public class PAManagerService extends Service {
 
-    // Config constants
-    private static final long EXPIRATION_TIME = 10 * 1000;
-    private static final long POST_JOB_MIN_INTERVAL = 1000;
-    private static final String DEVICE_SEARCH_STRING = "healthDevice";
+    // SharedPreferences related constants
+    private final static String SHPREF_FILENAME = "listSync";
+    private final static String SHPREF_WHITELIST_NAME = "whitelist";
+    private final static String SHPREF_BLACKLIST_NAME = "blacklist";
 
-    // Binder for this instance of the PA
-    private final PAManBinder paBinder = new PAManBinder();
+    // Variables for storing white/black lists
+    private final List<String> blacklist = new CopyOnWriteArrayList<String>();
+    private final List<String> whitelist = new CopyOnWriteArrayList<String>();
 
-    // Device Adapter management
-    private String[] availableDAs;                                          // [DAName] from ComponentName.flattenToString()
-    private Map<String, IDeviceAdapter> listDA = new HashMap<String, IDeviceAdapter>();     // <[DAName], [DAInstance]>
+    // Variables for Device Adapter management
+    private Map<String, Capabilities> availableDAs = new HashMap<String, Capabilities>();       // <[DA ID], [DACapabilities]>
+    private Map<String, IDeviceAdapter> connectedDAs = new HashMap<String, IDeviceAdapter>();   // <[DA ID], [DAInstance]>
+    private Map<String, DAConnection> daConnections = new HashMap<String, DAConnection>();
 
-    // Protocol Adapter management
+    // Variables for Application Management
+    private IProtocolAdapterListener appApi;
+
+    // Variables for Protocol Adapter management
     private boolean firstStart = true;
 
-    // Message management
-    private List<ISDCSMessage> sentMessages = new CopyOnWriteArrayList<ISDCSMessage>();
-    private int counter_messageID =  new Random().nextInt(99999);
-    private long lastPostedJob = new Date().getTime();
-    final Handler h = new Handler();
+    // Implementation of the Protocol Adapter API (IProtocolAdapter) to pass to the Application
+    private final IProtocolAdapter.Stub appEndpoint = new IProtocolAdapter.Stub() {
 
-    // Base path for applications
-    private String applicationsReference;
-
-    /**
-     * Endpoint for managing the connection/disconnection of the Device Adapters
-     */
-    private ServiceConnection serviceConnection = new ServiceConnection() {
-
+        /**
+         * Returns a list of all the devices connected at the moment in all Device Adapters.
+         *
+         * @return A List containing the DeviceDescription of all the connected devices
+         */
         @Override
-        public void onServiceConnected(ComponentName componentName, IBinder iBinder) {
+        public List<DeviceDescription> getConnectedDevices() throws RemoteException {
+            Log.i(PAAndroidConstants.PA_LOGTAG, "Fetching connected devices");
 
-            // Retrieve the Device Adapter from the binder
-            IDeviceAdapter tempDA = ((IDeviceAdapter.DABinder) iBinder).getDeviceAdapter();
+            List<DeviceDescription> connectedDev = new ArrayList<DeviceDescription>();
 
-            // Add the Device Adapter to the List
-            listDA.put(componentName.flattenToString(), tempDA);
-            Log.i(PAAndroidConstants.PA_LOGTAG, "New Device Adapter added: " + componentName.flattenToString() + ".");
+            // Scan all connected DAs
+            for (String tmpDaName : connectedDAs.keySet()) {
 
-            // Register the Protocol Adapter into the Device Adapter
-            tempDA.RegisterPA(paBinder);
+                // Retrieve the Capabilities of the DA
+                Capabilities cap = availableDAs.get(tmpDaName);
+
+                // If the DA has access to connected devices, add its devices to the general list
+                if (cap.isCommunicationInitiator()) {
+                    connectedDev.addAll(connectedDAs.get(tmpDaName).getConnectedDevices());
+                }
+            }
+
+            // Return the list of devices
+            return connectedDev;
         }
 
+        /**
+         * Returns a map containing the Device ID of all the devices paired with the smartphone that can
+         * be handled by at least one DA as the key, and a list of DA IDs of DA that can handle that
+         * device as the value.
+         *
+         * @return A map containing the Device ID of all the paired devices as the key, and a list of DA
+         * IDs that can handle that device as the value (Map<String, List<String>>).
+         */
         @Override
-        public void onServiceDisconnected(ComponentName componentName) {
-            Log.i(PAAndroidConstants.PA_LOGTAG, componentName.flattenToString() + " Device Adapter service disconnected.");
+        public Map<String, List<String>> getDADevices() throws RemoteException {
+            Log.i(PAAndroidConstants.PA_LOGTAG, "Fetching paired devices address");
 
-            // Remove the Device Adapter from the DA List
-            listDA.remove(componentName.flattenToString());
+            Map<String, List<String>> daDev = new HashMap<String, List<String>>();
+
+            // For each connected DA...
+            for (IDeviceAdapter tmpDa : connectedDAs.values()) {
+
+                // ... retrieve the Capabilities of the DA...
+                Capabilities cap = tmpDa.getDACapabilities();
+
+                // ... then if it can provide the paired devices...
+                if (cap.canProvideAvailableDevice()) {
+
+                    // ... retrieve all the managed paired devices and the DA ID...
+                    List<String> daPairedDev = tmpDa.getPairedDevicesAddress();
+                    String daId = cap.getPackageName();
+
+                    // ... and for each device...
+                    for (String dev : daPairedDev) {
+
+                        // ... check if it's already contained in the original HashMap...
+                        List<String> daHandlingDevice = daDev.get(dev);
+
+                        // ... if so, then add the actual DA to the list of DAs handling this device
+                        if (daHandlingDevice != null) {
+                            daHandlingDevice.add(daId);
+                        }
+                        // Otherwise create a new entry in the map for the device
+                        else {
+                            daHandlingDevice = new ArrayList<String>();
+                            daHandlingDevice.add(daId);
+                            daDev.put(dev, daHandlingDevice);
+                        }
+                    }
+                }
+            }
+
+            // Return the HashMap of the devices
+            return daDev;
+        }
+
+        /**
+         * Returns a list of devices that can be detected with a scanning.
+         *
+         * @return A list containing the Device ID of all the discovered devices
+         */
+        @Override
+        public List<String> detectDevices() throws RemoteException {
+            // TODO Issue #3 Evaluate whether method detectDevices is really needed and, if so, evaluate whether it should be made asynchronous.
+            throw new UnsupportedOperationException("This method is not working yet!");
+        }
+
+        /**
+         * Set the specific configuration of a device managed by the Device Adapter passing a data
+         * structure with key-value pairs containing all possible configuration parameters and
+         * their values, together with the device ID. This should be done before starting the Device
+         * Adapter, otherwise standard configuration will be used. Depending on capabilities, this
+         * could also be invoked when the DA is already running.
+         *
+         * @param config The configuration for the device in the form of a key/value set (String/String)
+         * @param devId The device ID (the MAC Address)
+         */
+        @Override
+        public void setDeviceConfig(Map config, String devId) throws RemoteException {
+            Log.i(PAAndroidConstants.PA_LOGTAG, "Fetching paired devices address");
+
+            // Scan all connected DAs
+            for (String tmpDaName : connectedDAs.keySet()) {
+
+                // Retrieve the Capabilities of the DA
+                Capabilities cap = availableDAs.get(tmpDaName);
+
+                // If the DA supports device configuration at runtime, try to configure the device
+                if (cap.getDeviceConfigurationType() == Capabilities.CONFIG_RUNTIME_ONLY ||
+                        cap.getDeviceConfigurationType() == Capabilities.CONFIG_STARTUP_AND_RUNTIME) {
+                    connectedDAs.get(tmpDaName).setDeviceConfig(config, devId);
+                }
+            }
+        }
+
+        /**
+         * Start the Device Adapter operations. This will cause the PA to bind the DA's service
+         * and start the DA.
+         *
+         * @param daId The Device Adapter ID
+         */
+        @Override
+        public void startDA(String daId) throws RemoteException {
+            Log.i(PAAndroidConstants.PA_LOGTAG, "Starting Device Adapter " + daId);
+
+            // Retrieve the Capabilities object for the specified DA
+            Capabilities daCap = daId != null ? availableDAs.get(daId) : null;
+
+            // Start the specified DA using the correct action in the Intent
+            if (daCap != null) {
+                Intent intent;
+                String action = daCap.getActionName();
+                String pkg = daCap.getPackageName();
+                intent = new Intent().setComponent(new ComponentName(pkg, action));
+                bindService(intent, new DAConnection(), Context.BIND_AUTO_CREATE);
+            }
+
+        }
+
+        /**
+         * Stop the Device Adapter operations. This will cause the PA to stop the DA and unbind the
+         * related service.
+         *
+         * @param daId The Device Adapter ID
+         */
+        @Override
+        public void stopDA(String daId) throws RemoteException {
+            Log.i(PAAndroidConstants.PA_LOGTAG, "Stopping Device Adapter " + daId);
+
+            // Retrieve the api endpoint of the specified DA
+            IDeviceAdapter tmpDa = daId != null ? connectedDAs.get(daId) : null;
+
+            if (tmpDa != null) {
+                // Stop the operation of the Device Adapter
+                tmpDa.stop();
+
+                // Get the DAConnection object from the Map
+                DAConnection conn = daConnections.get(daId);
+
+                if (conn != null) {
+                    // Unbind the Device Adapter
+                    unbindService(conn);
+
+                    // Remove the DA from the Maps
+                    connectedDAs.remove(daId);
+                    daConnections.remove(daId);
+                }
+            }
+
+        }
+
+        /**
+         * Return a Map with all the available DAs in the system. The keys of the Map are the DAs'
+         * ID and the values are the related Capabilities object.
+         *
+         * @return A Map with DA identifiers as key and Capabilities object as value
+         */
+        @Override
+        public Map getAvailableDAs() throws RemoteException {
+            return availableDAs;
+        }
+
+        /**
+         * Return the object describing the capabilities of the specified DA.
+         *
+         * @param daId ID of the DA
+         * @return An instance of the Capabilities object containing all the capabilities of the device
+         */
+        @Override
+        public Capabilities getDACapabilities(String daId) throws RemoteException {
+            return daId != null ? availableDAs.get(daId) : null;
+        }
+
+        /**
+         * Connect to the device whose MAC Address is passed as an argument.
+         *
+         * @param devId The Device ID
+         */
+        @Override
+        public void connectDev(String devId) throws RemoteException {
+            Log.i(PAAndroidConstants.PA_LOGTAG, "Connecting to the specific device " + devId);
+
+            // Retrieve the map of the devices and the list of the DAs handling the specified device
+            Map<String, List<String>> devices = getDADevices();
+            List<String> daHandlingDevice = devices.get(devId);
+
+            // Check whether there is exactly one DA handling the specified device
+            if (daHandlingDevice != null && daHandlingDevice.size() == 1) {
+
+                // Retrieve the Capabilities and the endpoint of that DA
+                Capabilities cap = availableDAs.get(daHandlingDevice.get(0));
+                IDeviceAdapter da = connectedDAs.get(daHandlingDevice.get(0));
+
+                // If the DA supports connection initiation, then connect to the specified device
+                if (cap.isCommunicationInitiator()) {
+                    da.connectDev(devId);
+                } else {
+                    appApi.log(LOG_LEVEL.ERROR, PAAndroidConstants.PA_PACKAGE, "Connection initiation is not supported by the specified device (" + devId + ")");
+                    throw new RuntimeException("Connection initiation is not supported by the specified device (" + devId + ")");
+                }
+
+            } else {
+                appApi.log(LOG_LEVEL.ERROR, PAAndroidConstants.PA_PACKAGE, "The device " + devId + " is not present in the list or is handled by more than one Device Adapter. Try using forceConnectDev.");
+                throw new RuntimeException("The device " + devId + " is not present in the list or is handled by more than one Device Adapter. Try using forceConnectDev.");
+            }
+        }
+
+        /**
+         * Force connection to the device whose devID is passed as an argument using the specified
+         * Device Adapter. This method can be used to connect a supported device that, for some
+         * reasons, is not recognised by the corresponding DA.
+         *
+         * @param devId The Device ID
+         * @param daId The ID of the Device Adapter
+         */
+        @Override
+        public void forceConnectDev(String devId, String daId) throws RemoteException {
+            Log.i(PAAndroidConstants.PA_LOGTAG, "Forcing connection to the specific device " + devId + " via " + daId);
+
+            // Retrieve the specified DA and its capabilities
+            Capabilities cap = availableDAs.get(daId);
+            IDeviceAdapter da = connectedDAs.get(daId);
+
+            // If the DA is available in the system...
+            if (cap != null) {
+                // ... and it is connected...
+                if (da != null) {
+                    // ... and it supports connection initiation
+                    if (cap.isCommunicationInitiator()) {
+                        // ... then try connecting to the device
+                        da.forceConnectDev(devId);
+                    } else {
+                        appApi.log(LOG_LEVEL.ERROR, PAAndroidConstants.PA_PACKAGE, "Connection initiation is not supported by the specified device (" + devId + ")");
+                        throw new RuntimeException("Connection initiation is not supported by the specified device (" + devId + ")");
+                    }
+                } else {
+                    appApi.log(LOG_LEVEL.ERROR, PAAndroidConstants.PA_PACKAGE, "The specified Device Adapter " + devId + " is not connected!");
+                    throw new RuntimeException("The specified Device Adapter " + devId + " is not connected!");
+                }
+            } else {
+                appApi.log(LOG_LEVEL.ERROR, PAAndroidConstants.PA_PACKAGE, "The specified Device Adapter " + devId + " is not available in the system!");
+                throw new RuntimeException("The specified Device Adapter " + devId + " is not available in the system!");
+            }
+        }
+
+        /**
+         * Disconnect from the device whose MAC Address is passed as an argument.
+         *
+         * @param devId The Device ID
+         */
+        @Override
+        public void disconnectDev(String devId) throws RemoteException {
+            Log.i(PAAndroidConstants.PA_LOGTAG, "Disconnecting device " + devId);
+
+            // Scan all connected DAs
+            for (String tmpDaName : connectedDAs.keySet()) {
+
+                // Retrieve the Capabilities of the DA
+                Capabilities cap = availableDAs.get(tmpDaName);
+
+                // If the DA supports connection initiation, connect to the specified device
+                if (cap.isCommunicationInitiator()) {
+                    connectedDAs.get(tmpDaName).disconnectDev(devId);
+                }
+            }
+        }
+
+        /**
+         * Receive a binder from the Application representing its interface.
+         *
+         * @param application The IBinder of the application
+         */
+        @Override
+        public void registerPAListener(IBinder application) throws RemoteException {
+            appApi = IProtocolAdapterListener.Stub.asInterface(application);
+            // TODO If more initialization or initial actions are needed after the application registered itself, just do them here
+        }
+
+        /**
+         * Add a device to the Device Adapter whitelist, passing its device ID as an argument.
+         * Note that this insertion will persist, even through Device Adapter reboots, until
+         * the device it's removed from the list. Every device adapter should check the format
+         * of the address passed as an argument and, if it does not support that kind of
+         * address, it can safely ignore that address.
+         *
+         * @param devId The Device ID
+         */
+        @Override
+        public void addDeviceToWhitelist(String devId) throws RemoteException {
+            Log.i(PAAndroidConstants.PA_LOGTAG, "Adding device " + devId + " to whitelist");
+
+            // If the device ID is not valid, just do nothing
+            if (devId == null || "".equals(devId)) return;
+
+            // Othwerwise add it to the list
+            whitelist.add(devId);
+
+            // Reflect the changes on SharedPreferences
+            syncSharedPreferences();
+
+            // Scan all connected DAs
+            for (String tmpDaName : connectedDAs.keySet()) {
+
+                // Retrieve the Capabilities of the DA
+                Capabilities cap = availableDAs.get(tmpDaName);
+
+                // If the DA supports whitelist, add the specified device to its whitelist
+                if (cap.hasWhitelist()) {
+                    connectedDAs.get(tmpDaName).addDeviceToWhitelist(devId);
+                }
+            }
+        }
+
+        /**
+         * Remove from the whitelist the device whose device ID is passed as an argument.
+         * If the device is not in the list, the request can be ignored.
+         *
+         * @param devId The Device ID
+         */
+        @Override
+        public void removeDeviceFromWhitelist(String devId) throws RemoteException {
+            Log.i(PAAndroidConstants.PA_LOGTAG, "Removing device " + devId + " from whitelist");
+
+            // If the device ID is not valid, just do nothing
+            if (devId == null || "".equals(devId)) return;
+
+            // Othwerwise remove it from the list
+            whitelist.remove(devId);
+
+            // Reflect the changes on SharedPreferences
+            syncSharedPreferences();
+
+            // Scan all connected DAs
+            for (String tmpDaName : connectedDAs.keySet()) {
+
+                // Retrieve the Capabilities of the DA
+                Capabilities cap = availableDAs.get(tmpDaName);
+
+                // If the DA supports whitelist, remove the specified device from whitelist
+                if (cap.hasWhitelist()) {
+                    connectedDAs.get(tmpDaName).removeDeviceFromWhitelist(devId);
+                }
+            }
+        }
+
+        /**
+         * Retrieve all the devices in the whitelist of the DA. If there's no devices, an
+         * empty list is returned.
+         *
+         * @return A list containing all the device id in the white list
+         */
+        @Override
+        public List<String> getWhitelist() throws RemoteException {
+            Log.i(PAAndroidConstants.PA_LOGTAG, "Retrieving the global whitelist");
+
+            return whitelist;
+        }
+
+        /**
+         * Set a list of devices in the whitelist all together, passing their device IDs as an argument.
+         * Note that this insertion will persist, even through Device Adapter reboots, until
+         * the devices are removed from the list. Every device adapter should check the format
+         * of the address passed as an argument one by one and, if it does not support that kind of
+         * address, it can safely ignore that address.
+         *
+         * @param mWhitelist A list containing all the device id to insert in the white list
+         */
+        @Override
+        public void setWhitelist(List<String> mWhitelist) throws RemoteException {
+            Log.i(PAAndroidConstants.PA_LOGTAG, "Setting the global whitelist");
+
+            // Empty the list
+            emptyList(whitelist);
+
+            if (mWhitelist != null) {
+                // Add to the whitelist every element of the list passed as argument
+                for (String dev : mWhitelist) {
+                    if (dev != null && !"".equals(dev)) whitelist.add(dev);
+                }
+            }
+
+            // Reflect the changes on SharedPreferences
+            syncSharedPreferences();
+
+            // Scan all connected DAs
+            for (String tmpDaName : connectedDAs.keySet()) {
+
+                // Retrieve the Capabilities of the DA
+                Capabilities cap = availableDAs.get(tmpDaName);
+
+                // If the DA supports whitelist, remove the specified device from whitelist
+                if (cap.hasWhitelist()) {
+                    connectedDAs.get(tmpDaName).setWhitelist(whitelist);
+                }
+            }
+        }
+
+        /**
+         * Add a device to the Device Adapter blacklist, passing its device ID as an argument.
+         * Note that this insertion will persist, even through Device Adapter reboots, until
+         * the device it's removed from the list. Every device adapter should check the format
+         * of the address passed as an argument and, if it does not support that kind of
+         * address, it can safely ignore that address.
+         *
+         * @param devId The Device ID
+         */
+        @Override
+        public void addDeviceToBlackList(String devId) throws RemoteException {
+            Log.i(PAAndroidConstants.PA_LOGTAG, "Adding device " + devId + " to blacklist");
+
+            // If the device ID is not valid, just do nothing
+            if (devId == null || "".equals(devId)) return;
+
+            // Othwerwise add it to the list
+            blacklist.add(devId);
+
+            // Reflect the changes on SharedPreferences
+            syncSharedPreferences();
+
+            // Scan all connected DAs
+            for (String tmpDaName : connectedDAs.keySet()) {
+
+                // Retrieve the Capabilities of the DA
+                Capabilities cap = availableDAs.get(tmpDaName);
+
+                // If the DA supports blacklist, add the specified device to blacklist
+                if (cap.hasBlacklist()) {
+                    connectedDAs.get(tmpDaName).addDeviceToBlackList(devId);
+                }
+            }
+        }
+
+        /**
+         * Remove from the blacklist the device whose device ID is passed as an argument.
+         * If the device is not in the list, the request can be ignored.
+         *
+         * @param devId The Device ID
+         */
+        @Override
+        public void removeDeviceFromBlacklist(String devId) throws RemoteException {
+            Log.i(PAAndroidConstants.PA_LOGTAG, "Removing device " + devId + " from blacklist");
+
+            // If the device ID is not valid, just do nothing
+            if (devId == null || "".equals(devId)) return;
+
+            // Othwerwise remove it from the list
+            blacklist.remove(devId);
+
+            // Reflect the changes on SharedPreferences
+            syncSharedPreferences();
+
+            // Scan all connected DAs
+            for (String tmpDaName : connectedDAs.keySet()) {
+
+                // Retrieve the Capabilities of the DA
+                Capabilities cap = availableDAs.get(tmpDaName);
+
+                // If the DA supports blacklist, remove the specified device from blacklist
+                if (cap.hasBlacklist()) {
+                    connectedDAs.get(tmpDaName).removeDeviceFromBlacklist(devId);
+                }
+            }
+        }
+
+        /**
+         * Retrieve all the devices in the blacklist of the DA. If there's no devices, an
+         * empty list is returned.
+         *
+         * @return A list containing all the device id in the black list
+         */
+        @Override
+        public List<String> getBlacklist() throws RemoteException {
+            Log.i(PAAndroidConstants.PA_LOGTAG, "Retrieving the global blacklist");
+
+            return blacklist;
+        }
+
+        /**
+         * Set a list of devices in the blacklist all together, passing their device IDs as an argument.
+         * Note that this insertion will persist, even through Device Adapter reboots, until
+         * the devices are removed from the list. Every device adapter should check the format
+         * of the address passed as an argument one by one and, if it does not support that kind of
+         * address, it can safely ignore that address.
+         *
+         * @param mBlacklist A list containing all the device id to insert in the black list
+         */
+        @Override
+        public void setBlackList(List<String> mBlacklist) throws RemoteException {
+            Log.i(PAAndroidConstants.PA_LOGTAG, "Setting the global blacklist");
+
+            // Empty the list
+            emptyList(blacklist);
+
+            if (mBlacklist != null) {
+                // Add to the whitelist every element of the list passed as argument
+                for (String dev : mBlacklist) {
+                    if (dev != null && !"".equals(dev)) blacklist.add(dev);
+                }
+            }
+
+            // Reflect the changes on SharedPreferences
+            syncSharedPreferences();
+
+            // Scan all connected DAs
+            for (String tmpDaName : connectedDAs.keySet()) {
+
+                // Retrieve the Capabilities of the DA
+                Capabilities cap = availableDAs.get(tmpDaName);
+
+                // If the DA supports blacklist, remove the specified device from blacklist
+                if (cap.hasBlacklist()) {
+                    connectedDAs.get(tmpDaName).setWhitelist(blacklist);
+                }
+            }
+        }
+
+        /**
+         * Return all the commands supported by the Device Adapter for its devices.
+         *
+         * @param daId ID of the DA
+         * @return A list of commands supported by the Device Adapter
+         */
+        @Override
+        public List<String> getCommandList(String daId) throws RemoteException {
+            Log.i(PAAndroidConstants.PA_LOGTAG, "Retrieving command list from Device Adapter " + daId);
+
+            List<String> commandList = new ArrayList<String>();
+
+            // Retrieve the right DA
+            IDeviceAdapter tmpDa = daId != null ? connectedDAs.get(daId) : null;
+            Capabilities cap = daId != null ? availableDAs.get(daId) : null;
+
+            // If the Device Adapter is not connected throw an Exception
+            if (tmpDa == null || cap == null) {
+                throw new IllegalStateException("The Device Adapter " + daId + " is not connected to Protocol Adapter! If you are sure that the Device Adapter is connected, try increasing the time interval between the Device Adapter connection and the retrieving of command list.");
+            }
+
+            // Retrieve and return the Device Adapter's command list
+            if (cap.supportCommands()) {
+                commandList = tmpDa.getCommandList();
+            }
+
+            return commandList;
+        }
+
+        /**
+         * Execute a command supported by the device. You can also specify a parameter, if the command
+         * allows or requires it.
+         *
+         * @param command The command to execute on the device
+         * @param parameter The optional parameter to pass to the device together with the command
+         * @param devId The Device ID
+         *
+         * @throws IllegalArgumentException if the command is not supported by the Device Adapter
+         */
+        @Override
+        public void execCommand(String command, String parameter, String devId) throws RemoteException {
+            Log.i(PAAndroidConstants.PA_LOGTAG, "Sending command to device.\n" +
+            "Device: " + devId + "\n" +
+            "Command: " + command + "\n" +
+            "Parameter: " + parameter);
+
+            // Check whether the device passed as an argument is null
+            if (devId == null) {
+                return;
+            }
+
+            // Scan all connected DAs
+            for (String tmpDaName : connectedDAs.keySet()) {
+
+                // Retrieve the Capabilities of the DA
+                Capabilities cap = availableDAs.get(tmpDaName);
+
+                // If the DA supports sending commands to devices and is connection initiator...
+                if (cap.supportCommands() && cap.isCommunicationInitiator()) {
+
+                    List<DeviceDescription> connDevs = connectedDAs.get(tmpDaName).getConnectedDevices();
+
+                    // ... Scan its connected devices...
+                    for (DeviceDescription tmpDev : connDevs) {
+
+                        // ... If the desired device is connected with this DA at the moment, send it the command
+                        if (devId.equals(tmpDev.getDeviceID())) {
+                            connectedDAs.get(tmpDaName).execCommand(command, parameter, devId);
+                            break;
+                        }
+                    }
+
+                }
+
+            }
+        }
+    };
+
+    /**
+     * Implementation of the Device Adapter Listener API (IDeviceAdapterListener) to pass to the
+     * Device Adapter
+     */
+    private final IDeviceAdapterListener.Stub daEndpoint = new IDeviceAdapterListener.Stub() {
+
+        /**
+         * Register a new device with the SDCS
+         *
+         * @param devDesc
+         *      The device to register
+         */
+        @Override
+        public void registerDevice(DeviceDescription devDesc) {
+            Log.i(PAAndroidConstants.PA_LOGTAG, "Received device description: " + devDesc.toString());
 
             try {
-                // Try to start the DA again. This way, the DA will be added again to the DA List
-                // when onServiceConnected is called
-                startDeviceAdapter(componentName.flattenToString());
-            } catch (Exception ex) {
-                Log.e(PAAndroidConstants.PA_LOGTAG, componentName.flattenToString() + " Device Adapter failed to start.");
+                appApi.registerDevice(devDesc);
+            } catch (RemoteException e) {
+                Log.d(PAAndroidConstants.PA_LOGTAG, "Failed to register device with application!");
             }
+        }
+
+        /**
+         * Register all the property of a given device taking care of sending one separate message for
+         * each property
+         *
+         * @param devDesc
+         *      The device whom the properties belongs to
+         */
+        @Override
+        public void registerDeviceProperties(DeviceDescription devDesc) {
+            Log.i(PAAndroidConstants.PA_LOGTAG, "Received properties to register from device: " + devDesc.toString());
+
+            try {
+                appApi.registerDeviceProperties(devDesc);
+            } catch (RemoteException e) {
+                Log.d(PAAndroidConstants.PA_LOGTAG, "Failed to register device properties with application!");
+            }
+        }
+
+        /**
+         * Push the data received from the DA, taking care of sending one separate message for each
+         * measurement
+         *
+         * @param observations
+         *      The measurements to push to SDCS
+         *
+         * @param devDesc
+         *      The device whom the observation belongs to
+         */
+        @Override
+        public void pushData(List<Observation> observations, DeviceDescription devDesc) {
+            String dataStr = "";
+            for (Observation obs : observations) {
+                dataStr += obs.toString() + "\n";
+            }
+            Log.i(PAAndroidConstants.PA_LOGTAG, "Received data to push\n" +
+                    "Device: " + devDesc.getDeviceID() +
+                    "Data: " + dataStr);
+
+            try {
+                appApi.pushData(observations, devDesc);
+            } catch (RemoteException e) {
+                Log.d(PAAndroidConstants.PA_LOGTAG, "Failed to push data with application!");
+            }
+        }
+
+        /**
+         * Deregister the given device from the SDCS
+         *
+         * @param devDesc
+         *      The device to use
+         */
+        public void deregisterDevice(DeviceDescription devDesc) {
+            Log.i(PAAndroidConstants.PA_LOGTAG, "Received device deregistration: " + devDesc.getDeviceID());
+
+            try {
+                appApi.deregisterDevice(devDesc);
+            } catch (RemoteException e) {
+                Log.d(PAAndroidConstants.PA_LOGTAG, "Failed to deregister device with application!");
+            }
+
+        }
+
+        /**
+         * Notify a device disconnection to the upper layer
+         *
+         * @param devDesc The ID of the disconnected device
+         */
+        public void deviceDisconnected(DeviceDescription devDesc) {
+            Log.i(PAAndroidConstants.PA_LOGTAG, "Received device disconnection: " + devDesc.getDeviceID());
+
+            try {
+                appApi.deviceDisconnected(devDesc);
+            } catch (RemoteException e) {
+                Log.d(PAAndroidConstants.PA_LOGTAG, "Failed to notify device disconnection to application!");
+            }
+        }
+
+        /**
+         * Receive notification from the Device Adapter of some event that happened and forward it
+         * to upper layer.
+         *
+         * @param logLevel The severity of the event
+         * @param daId The ID of the Device Adapter that generated the event
+         * @param message The message associated with the event
+         */
+        @Override
+        public void log(int logLevel, String daId, String message) throws RemoteException {
+            appApi.log(logLevel, daId, message);
         }
 
     };
 
-    /**
-     * Initialize the protocol adapter, and specifically:
-     * <ul>
-     *     <li>Retrieve the base parameters</li>
-     *     <li>Discover all the available DAs</li>
-     *     <li>Start the Device Adapters</li>
-     *     <li>Create the Intent Filter to receive Intents from SDCS</li>
-     *     <li>Register the Broadcast Receiver for broadcast-intent based communication</li>
-     * </ul>
-     */
-    public void init(Intent i) {
+    BroadcastReceiver broadcastDiscoveryDA = new BroadcastReceiver() {
+        /**
+         * Receive Discovery Reply Intents from DAs and insert all info about DAs in the list of
+         * available DAs
+         *
+         * @param context The context
+         * @param intent Intent received from DA
+         */
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            // Extract DA ID and DA Capabilities from the Intent
+            String daId = intent.getStringExtra(DA_DISCOVERY.BUNDLE_DAID);
+            Capabilities daCap = intent.getParcelableExtra(DA_DISCOVERY.BUNDLE_DACAP);
 
-        // Retrieve the base parameter from the SDCS
-        retrieveBaseParams(i);
+            // Insert the newly found DA inside the list of available DAs
+            if (daId != null && daCap != null) {
+                availableDAs.put(daId, daCap);
+                Log.i(PAAndroidConstants.PA_LOGTAG, "Found Device Adapter " + daCap.getFriendlyName() + " (" + daCap.getPackageName() + ")");
+            }
 
-        // Discover DAs on the system
-        discoverDAs();
-
-        // Start the Device Adapters
-        startDeviceAdapters();
-        Log.i(PAAndroidConstants.PA_LOGTAG, "Started Device Adapters");
-
-        // Create the Intent Filter
-        IntentFilter filter = new IntentFilter();
-        filter.addAction(PAAndroidConstants.PACKAGE);
-
-        // Register the Broadcast Receiver
-        registerReceiver(broadcastReceiverPA, filter);
-        Log.i(PAAndroidConstants.PA_LOGTAG, "Added filter for Protocol Adapter: " + PAAndroidConstants.PACKAGE);
-    }
+        }
+    };
 
     @Override
-    public int onStartCommand(Intent intent, int flags, int startId) {
+    public IBinder onBind(Intent intent) {
 
         // If this is the first start, do some initialization tasks
         if (firstStart) {
@@ -159,17 +856,20 @@ public class PAManagerService extends Service implements IProtocolAdapter {
                 if (issuer == null) {
                     Log.d(PAAndroidConstants.PA_LOGTAG, "No Issuer found in activation message. Using default.");
                 } else {
-                    Log.d(PAAndroidConstants.PA_LOGTAG, "onStartCommand called, Issuer is: " + issuer);
+                    Log.d(PAAndroidConstants.PA_LOGTAG, "Service was bound, Issuer is: " + issuer);
                 }
 
             } catch (Exception ex) {
                 Log.d(PAAndroidConstants.PA_LOGTAG, ex.toString());
             }
 
-            // Initialization phase
-            init(intent);
+            // Retrieve the saved values for blacklist and whitelist
+            restoreFromSharedPreferences();
 
-            // Do not allow the repetition of this phase
+            // Discover DAs on the system
+            discoverDAs();
+
+            // Do not allow the repetition of this phase (though this may be redundant for bound services)
             firstStart = false;
 
             Log.i(PAAndroidConstants.PA_LOGTAG, "Protocol Adapter up and running.");
@@ -177,386 +877,256 @@ public class PAManagerService extends Service implements IProtocolAdapter {
             Log.i(PAAndroidConstants.PA_LOGTAG, "Protocol Adapter already up and running: not restarted.");
         }
 
-        return super.onStartCommand(intent, flags, startId);
+        return appEndpoint;
 
+    }
+
+    @Override
+    public void onDestroy() {
+        // Stop and unbind from binded DAs in order to avoid ServiceConnection leak
+        Set<String> das = new TreeSet<String>(connectedDAs.keySet());
+
+        for (String tmpDA : das) {
+            try {
+                appEndpoint.stopDA(tmpDA);
+            } catch (RemoteException e) {
+                Log.d(PAAndroidConstants.PA_LOGTAG, "Error disconnecting from DA");
+            } catch (IllegalArgumentException e) {
+                Log.d(PAAndroidConstants.PA_LOGTAG, "No DA to disconnect from");
+            }
+        }
     }
 
     /**
      * Discover all the DA available on the system
      */
     private void discoverDAs() {
-        //TODO: [BETA] implement actual search for DA Services
-        availableDAs = PAAndroidConstants.AVAILABLE_DAS;
-    }
+        Log.i(PAAndroidConstants.PA_LOGTAG, "Starting Device Adapter discovery");
 
-    /**
-     * Retrieve the base parameters from the SDCS instance running on the system
-     */
-    private void retrieveBaseParams(Intent i) {
-        // TODO: [BETA] Get the names of DeviceAdapters to activate from SDCS
-        // TODO: [BETA] Get the applicationsReference from SDCS
-        // TODO: [BETA] Retrieve all info from starting Intent
-        applicationsReference = "/m2m/applications/";
-    }
+        // Create the Intent to broadcast
+        Intent intent = new Intent(DA_DISCOVERY.REQUEST_ACTION);
+        intent.putExtra(DA_DISCOVERY.BUNDLE_REPACT, DA_DISCOVERY.REPLY_ACTION);
 
-    @Override
-    public IBinder onBind(Intent intent) {
-        // This is not a bound service, so always return null
-        return null;
-    }
+        // Create the Intent Filter to receive broadcast replies
+        IntentFilter filter = new IntentFilter();
+        filter.addAction(DA_DISCOVERY.REPLY_ACTION);
 
-    /**
-     * Start the given Device Adapter
-     *
-     * @param daName
-     *      The Device Adapter to start
-     */
-    private void startDeviceAdapter(String daName) {
-        //TODO [BETA] Make this generic for every DA
+        // Register the Broadcast Receiver for replies and set it to run in another thread
+        HandlerThread ht = new HandlerThread("ht");
+        ht.start();
+        registerReceiver(broadcastDiscoveryDA, filter, null, new Handler(ht.getLooper()));
 
-        if (daName.startsWith(DEVICE_ADAPTERS.HDP_SERVICE_NAME)) {
-            Intent intent;
-            intent = new Intent(daName);
-            bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE);
+        // Send in broadcast the Intent for discovery
+        sendBroadcast(intent);
 
+        // Create a new Thread object to stop the discovery and also use it as a lock
+        ScanningStopAndLock r = new ScanningStopAndLock();
+
+        // Set the timeout for receiving replies
+        r.start();
+
+        // Wait for the scanning to be done before returning
+        synchronized (r) {
+            while (!r.isDiscoveryDone()) {
+                try {
+                    r.wait();
+                } catch (InterruptedException e) {
+                    // Just wait until scanning is done
+                }
+            }
         }
 
+    }
+
+    /**
+     * Stop the discovery of new DAs
+     */
+    private void stopDADiscovery() {
+        // Stop receiving intents related to DA discovery
+        unregisterReceiver(broadcastDiscoveryDA);
+
+        Log.i(PAAndroidConstants.PA_LOGTAG, "Device Adapter discovery ended");
+    }
+
+    /**
+     * Remove every element on this list
+     *
+     * @param list The list of devices
+     */
+    private void emptyList(List<String> list) {
+
+        if (list == null || list.isEmpty()) return;
+
+        for (String dev:list) {
+            list.remove(dev);
+        }
+
+    }
+
+    /**
+     * Synchronize actual value of whitelist and blacklist with SharedPreferences
+     */
+    private void syncSharedPreferences() {
+        // Get the SharedPreferences and prepare them for editing
+        SharedPreferences settings = getSharedPreferences(SHPREF_FILENAME, 0);
+        SharedPreferences.Editor editor = settings.edit();
+
+        // Update the values of whitelist and blacklist in the SharedPreferences
+        editor.putString(SHPREF_WHITELIST_NAME, new JSONArray(whitelist).toString());
+        editor.putString(SHPREF_BLACKLIST_NAME, new JSONArray(blacklist).toString());
+
+        // Commit the edits
+        editor.commit();
+    }
+
+    /**
+     * Restore in blacklist and whitelist every device saved in the SharedPreferences
+     */
+    private void restoreFromSharedPreferences() {
+        JSONArray jWhitelist, jBlacklist;
+
+        // Get access to the right SharedPreferences file
+        SharedPreferences shPref = getSharedPreferences(SHPREF_FILENAME, 0);
+
+        // Retrieve the whitelist and if there's any problem, create a new empty JSONArray
+        try {
+            jWhitelist = new JSONArray(shPref.getString(SHPREF_WHITELIST_NAME, "[]"));
+        } catch (JSONException e) {
+            jWhitelist = new JSONArray();
+        }
+
+        // Retrieve the blacklist and if there's any problem, create a new empty JSONArray
+        try {
+            jBlacklist = new JSONArray(shPref.getString(SHPREF_BLACKLIST_NAME, "[]"));
+        } catch (JSONException e) {
+            jBlacklist = new JSONArray();
+        }
+
+        // Add to whitelist every element present in JSONArray retrieved from SharedPreferences
+        for (int i = 0; i < jWhitelist.length(); i++) {
+            try {
+                whitelist.add(jWhitelist.getString(i));
+            } catch (JSONException e) {
+                Log.d(PAAndroidConstants.PA_LOGTAG, "Failed restoring whitelist from SharedPreferences");
+            }
+        }
+
+        // Add to blacklist every element present in JSONArray retrieved from SharedPreferences
+        for (int i = 0; i < jBlacklist.length(); i++) {
+            try {
+                blacklist.add(jBlacklist.getString(i));
+            } catch (JSONException e) {
+                Log.d(PAAndroidConstants.PA_LOGTAG, "Failed restoring blacklist from SharedPreferences");
+            }
+        }
     }
 
     /**
      * Start all the device adapters present in the the DA's array
      */
+    @SuppressWarnings("unused")
     private void startDeviceAdapters() {
-        //TODO: [BETA] get list of DA identifiers (availableDAs) to be activated from SDCS
-        //TODO: [BETA] check if there is locally an implementation of these DAs
+        // TODO Issue #7 Decide if startDeviceAdapters method should be promoted and put inside IProtocolAdapter interface
+        Log.i(PAAndroidConstants.PA_LOGTAG, "Starting all Device Adapters");
 
         // Start all Device Adapters that are installed
-        for (String da_name : availableDAs) {
-            startDeviceAdapter(da_name);
+        for (Capabilities daCap : availableDAs.values()) {
+            try {
+                appEndpoint.startDA(daCap.getActionName());
+            } catch (RemoteException e) {
+                Log.w(PAAndroidConstants.PA_LOGTAG, "Device Adapter " + daCap.getFriendlyName() + " (" + daCap.getPackageName() + ") failed to start!");
+            }
         }
 
     }
 
-    /**
-     * Create a SDCS message of the given type
-     *
-     * @param messageType
-     *      The type of the message
-     *
-     * @param source_device
-     *      The device
-     *
-     * @return
-     *      The created message
-     */
-    private ISDCSMessage createSDCSMessage(short messageType, String source_device) {
-        return new SDCSIntentMessage(getBaseContext(), messageType, source_device, applicationsReference);
-    }
+    private class ScanningStopAndLock extends Thread {
+        private boolean done = false;
 
-    /**
-     * Register a new device with the SDCS
-     *
-     * @param dev_desc
-     *      The device to register
-     */
-    @Override
-    public void register_Device(final IDeviceDescription dev_desc) {
-
-        // Create a device registration message
-        ISDCSMessage sdcsMessage = createSDCSMessage(SDCS_MESSAGES.MSG_TYPE_DEV_REGISTRATION, createResourceString(dev_desc.getModelName()));
-
-        // Build the Description of the Device
-        try{
-            JSONArray array = new JSONArray();
-            array.put(DEVICE_SEARCH_STRING);
-
-            JSONObject searchString = new JSONObject();
-            searchString.put(SDCS_MESSAGES.JSON_NAME_SEARCH_STRING, array);
-
-            JSONObject app_info = new JSONObject();
-            app_info.put(SDCS_MESSAGES.JSON_NAME_APP_ID, createResourceString(dev_desc.getModelName()));
-
-            app_info.put(SDCS_MESSAGES.JSON_NAME_SEARCH_STRINGS, searchString);
-
-            JSONObject app = new JSONObject();
-            app.put(SDCS_MESSAGES.JSON_NAME_APPLICATION, app_info);
-
-            sdcsMessage.setJSONContent(app);
-
-        }catch(JSONException e){
-            Log.e(PAAndroidConstants.PA_LOGTAG, "Error on registering the PA: ",e);
+        @Override
+        public void run() {
+            try {
+                Thread.sleep(DA_DISCOVERY.TIMEOUT);
+            } catch (InterruptedException e) {
+                // Do nothing
+            }
+            stopDADiscovery();
+            synchronized (this) {
+                done = true;
+                notifyAll();
+            }
         }
 
-        // Send the message
-        sdcsMessage.send(counter_messageID++);
-        sentMessages.add(sdcsMessage);
-        Log.i(PAAndroidConstants.PA_LOGTAG, "Device registration message sent correctly with message number "+ (counter_messageID-1));
-
-        // Handle the queue cleaning
-        queueCleaner();
-
-        // Register all the device's property with the SDCS
-        register_Device_Properties(dev_desc);
+        public boolean isDiscoveryDone() {
+            return done;
+        }
     }
 
     /**
-     * Register all the property of a given device taking care of sending one separate message for
-     * each property
-     *
-     * @param dev_desc
-     *      The device whom the properties belongs to
+     * Endpoint for managing the connection/disconnection of the Device Adapters
      */
-    @Override
-    public void register_Device_Properties(IDeviceDescription dev_desc) {
-        final List<ISensorDescription> sensors = dev_desc.getSensorList();
-        final String devResName = createResourceString(dev_desc.getModelName());
+    private class DAConnection implements ServiceConnection {
 
-        for (ISensorDescription sensor : sensors) {
+        @Override
+        public void onServiceConnected(ComponentName componentName, IBinder iBinder) {
 
-            // Create a property registration message
-            ISDCSMessage sdcsMessage = createSDCSMessage(SDCS_MESSAGES.MSG_TYPE_DEV_PROPERTIES_REGISTRATION, devResName);
+            // Retrieve the Device Adapter from the binder
+            String daId = componentName.getPackageName();
+            IDeviceAdapter tmpDa = IDeviceAdapter.Stub.asInterface(iBinder);
+
+            // Add the Device Adapter to the List
+            connectedDAs.put(daId, tmpDa);
+            daConnections.put(daId, this);
+            Log.i(PAAndroidConstants.PA_LOGTAG, "New Device Adapter connected: " + daId);
 
             try {
-                // Build the Description of the Sensor/Property
-                JSONObject id = new JSONObject();
-                id.put(SDCS_MESSAGES.JSON_NAME_ID, createResourceString(sensor.getPropertyName()));
-
-                JSONObject container = new JSONObject();
-                container.put(SDCS_MESSAGES.JSON_NAME_CONTAINER, id);
-
-                sdcsMessage.setJSONContent(container);
-
-                // Set the right path for the message
-                sdcsMessage.setPath(applicationsReference + devResName + "/containers");
-
-            } catch (JSONException e) {
-                Log.e(PAAndroidConstants.PA_LOGTAG, "Error on registering the property of the device " + devResName + ": ", e);
+                // Register the Protocol Adapter into the Device Adapter
+                tmpDa.registerDAListener(daEndpoint);
+            } catch (RemoteException e) {
+                Log.d(PAAndroidConstants.PA_LOGTAG, "Failed to register PA inside DA " + daId);
             }
 
-            // Send the message
-            sdcsMessage.send(counter_messageID++);
-            sentMessages.add(sdcsMessage);
+            try {
+                // Get the Capabilities of the DA
+                Capabilities cap = tmpDa.getDACapabilities();
 
-            // Handle the queue cleaning
-            queueCleaner();
+                // Restore the blacklist inside the newly connected DA if it's supported
+                if (cap.hasBlacklist()) {
+                    tmpDa.setBlackList(blacklist);
+                }
+
+                // Restore the whitelist inside the newly connected DA if it's supported
+                if (cap.hasWhitelist()) {
+                    tmpDa.setWhitelist(whitelist);
+                }
+
+                // Start the newly connected DA
+                tmpDa.start();
+            } catch (RemoteException e) {
+                Log.d(PAAndroidConstants.PA_LOGTAG, "Failed to start DA " + daId);
+            }
         }
-    }
 
-    /**
-     * Push the data received from the DA, taking care of sending one separate message for each
-     * measurement
-     *
-     * @param observations
-     *      The measurements to push to SDCS
-     *
-     * @param dev_desc
-     *      The device whom the observation belongs to
-     */
-    @Override
-    public void push_Data(IObservation[] observations, IDeviceDescription dev_desc) {
-
-        //TODO: [BETA] Ask for change to let the SDCS handle multiple measurements per message
-
-        // Send one separate message for each measurement
-        for (IObservation obs : observations) {
-        //for (int i=0; i<observations.length; i++) {
-
-            // Create a push message
-            ISDCSMessage sdcsMessage = createSDCSMessage(SDCS_MESSAGES.MSG_TYPE_DATA_PUSH, createResourceString(dev_desc.getModelName()));
-
-            // Set the right path for the message
-            String path = applicationsReference + createResourceString(dev_desc.getModelName()) + "/containers/" + createResourceString(obs.getPropertyName());
-            sdcsMessage.setPath(path + "/contentInstances");
-
-            // Add the measurement to the message
-            sdcsMessage.addObservation(obs);
-
-            // send the message to the SDCS
-            sdcsMessage.send(counter_messageID++);
-            sentMessages.add(sdcsMessage);
-
-            // Handle the queue cleaning
-            queueCleaner();
-
-        }
-    }
-
-    /**
-     * Deregister the given device from the SDCS
-     *
-     * @param dev_desc
-     *      The device to use
-     */
-    public void deregister_Device(IDeviceDescription dev_desc) {
-        ISDCSMessage sdcsMessage = createSDCSMessage(SDCS_MESSAGES.MSG_TYPE_DEV_DEREGISTRATION, createResourceString(dev_desc.getModelName()));
-
-        // Create a deregistration message and send it to the SDCS
-        sdcsMessage.setPath(applicationsReference + createResourceString(dev_desc.getModelName()));
-        sdcsMessage.send(counter_messageID++);
-        sentMessages.add(sdcsMessage);
-
-        // Handle the queue cleaning
-        queueCleaner();
-
-    }
-
-
-    /**
-     * This class is used to let the Device Adapter get the instance of Protocol Adapter
-     */
-    public class PAManBinder extends PABinder {
-        public IProtocolAdapter getProtocolAdapter() {
-            // Return this instance of the service
-            return PAManagerService.this;
-        }
-    }
-
-    BroadcastReceiver broadcastReceiverPA = new BroadcastReceiver() {
-
-        /**
-         * Handle the reception of SDCS's confirmation messages
-         *
-         * @param context
-         *      The context
-         *
-         * @param intent
-         *      The received Intent
-         */
         @Override
-        public void onReceive(Context context, Intent intent) {
+        public void onServiceDisconnected(ComponentName componentName) {
 
-            String messageId = intent.getExtras().getString(SDCS_MESSAGES.EXTRA_NAME_REQID);
-            Log.v(PAAndroidConstants.PA_LOGTAG, "Received an intent for action "+intent.getAction()+" with extras "+intent.getExtras().toString());
+            // Get the DA ID
+            String daId = componentName.getPackageName();
 
-            // If there is no messageId in the Intent just return and do nothing else
-            if (messageId == null) {
-                Log.w(PAAndroidConstants.PA_LOGTAG, "Dropping message with no messageID");
-                return;
-            }
-            Log.v(PAAndroidConstants.PA_LOGTAG, "MessageID is: " + messageId);
+            Log.i(PAAndroidConstants.PA_LOGTAG, daId + " Device Adapter service disconnected.");
 
+            // Remove the Device Adapter from the DA List
+            connectedDAs.remove(daId);
 
-            // If there is no status, this can be an unsolicited message from SDCS.
-            // This is not handled yet, so just return and do nothing else
-            String status = intent.getExtras().getString(SDCS_MESSAGES.EXTRA_NAME_STATUS);
-            if (status == null) {
-                //TODO: [BETA] Implement handling for some kind of spontaneous messages from SDCS
-                Log.v(PAAndroidConstants.PA_LOGTAG, "Status in message " + messageId + " is not set.");
-
-            } else {
-                Log.v(PAAndroidConstants.PA_LOGTAG, "Status in message " + messageId + " is : " + status + ". The content is: " + intent.getExtras().getString(SDCS_MESSAGES.EXTRA_NAME_CONTENT));
-                // Process response message status
-                if(status.startsWith(SDCS_MESSAGES.MSG_CODE_OK_PREFIX, 0)){
-
-                    // The message has been successfully confirmed from SDCS
-                    Log.v(PAAndroidConstants.PA_LOGTAG, "received confirmation for message: "+ messageId);
-                    int mID = Integer.parseInt(messageId);
-
-                    // We can safely find the message and remove it from the queue
-                    if (getSentMessageByID(mID) != null) {
-                        removeSentMessageByID(mID);
-                    // } else {
-                        // Do nothing...
-                        // The message is not in the queue anymore or has never been there.
-                        // We can safely ignore this case.
-                    }
-                }
+            try {
+                // Try to start the DA again. This way, the DA will be added again to the list of
+                // connected DAs when onServiceConnected is called
+                appEndpoint.startDA(daId);
+                Log.i(PAAndroidConstants.PA_LOGTAG, "Restarting Device Adapter " + daId);
+            } catch (RemoteException ex) {
+                Log.e(PAAndroidConstants.PA_LOGTAG, daId + " Device Adapter failed to connect.");
             }
         }
-    };
 
-    /**
-     * Delete from the queue the message having the given ID
-     *
-     * @param messageID
-     *      The message identifier
-     *
-     * @return
-     *      True if the message was deleted, false otherwise
-     */
-    private boolean removeSentMessageByID(int messageID) {
-
-        ISDCSMessage message = getSentMessageByID(messageID);
-
-        if (message ==null) return false;
-
-        sentMessages.remove(message);
-        return true;
-
-    }
-
-    /**
-     * Retrieve from the queue the message having the given ID
-     *
-     * @param messageID
-     *      The message identifier
-     *
-     * @return
-     *      The message having the specified ID if any, null otherwise
-     */
-    private ISDCSMessage getSentMessageByID(int messageID) {
-
-        for (ISDCSMessage message : sentMessages) {
-            if (message.getMessageID() == messageID) {
-                return message;
-            }
-        }
-        return null;
-    }
-
-    /**
-     * Check if there are expired messages and remove them from the sent message's queue
-     */
-    private void removeExpiredSentMessages() {
-        long now = new Date().getTime();
-
-        for (ISDCSMessage message : sentMessages) {
-
-            // If the message is expired, remove it from the queue
-            if (message.getTimestamp() < (now - EXPIRATION_TIME)) {
-                sentMessages.remove(message);
-                //TODO: [BETA] Handle the timeout somehow
-            }
-
-        }
-    }
-
-    /**
-     * Called every time a message is sent. Takes care of posting a new delayed job in the Handler
-     * to clean the message queue from messages that will expire. Also avoids posting too many jobs
-     */
-    private void queueCleaner() {
-
-        long now = new Date().getTime();
-
-        // If enough time has passed since last job posting,
-        // post a new job and reset the counter
-        if (lastPostedJob < (now - POST_JOB_MIN_INTERVAL)) {
-
-            h.postDelayed(new Runnable() {
-                @Override
-                public void run() {
-                    removeExpiredSentMessages();
-                }
-            }, EXPIRATION_TIME + POST_JOB_MIN_INTERVAL);
-
-            lastPostedJob = now;
-
-        }
-
-    }
-
-    /**
-     * Make the input String URL-Safe
-     *
-     * @param input
-     *      The String containing the name of the resource
-     *
-     * @return
-     *      The URL-Safe String
-     */
-    private String createResourceString(String input) {
-        // Return the model name without spaces and slashes
-        return input.replaceAll("\\s", "").replaceAll("/", "");
     }
 }

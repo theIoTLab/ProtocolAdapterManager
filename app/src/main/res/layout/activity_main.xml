@@ -20,19 +20,53 @@
         android:id="@+id/lblServiceFeedback"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Service not started"
+        android:text="Protocol Adapter in unknown status"
         android:layout_margin="10dp"
         android:layout_centerHorizontal="true"
         android:layout_below="@+id/lblTitle" />
 
-    <Button
-        android:id="@+id/btnStartService"
-        android:layout_width="wrap_content"
+    <LinearLayout
+        android:layout_width="fill_parent"
         android:layout_height="wrap_content"
-        android:layout_centerHorizontal="true"
-        android:text="Start Service"
-        android:onClick="startService"
-        android:layout_margin="10dp"
-        android:layout_below="@+id/lblServiceFeedback" />
+        android:orientation="vertical"
+        android:gravity="center"
+        android:layout_below="@+id/lblServiceFeedback">
+
+        <Button
+            android:id="@+id/btnStartService"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_margin="10dp"
+            android:onClick="startService"
+            android:text="Start Protocol Adapter" />
+
+        <Button
+            android:id="@+id/btnStopService"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_margin="10dp"
+            android:enabled="false"
+            android:onClick="stopService"
+            android:text="Stop Protocol Adapter" />
+
+        <Button
+            android:id="@+id/btnConnectDevices"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_margin="10dp"
+            android:enabled="true"
+            android:onClick="connectDevices"
+            android:text="Connect to all devices" />
+
+        <Button
+            android:id="@+id/btnToggleConfig"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_margin="10dp"
+            android:enabled="true"
+            android:onClick="toggleConfig"
+            android:text="Toggle Configuration" />
+
+    </LinearLayout>
 
 </RelativeLayout>

@@ -25,40 +25,7 @@
             android:name=".PAManagerService"
             android:enabled="true"
             android:exported="true" >
-            <intent-filter>
-                <action
-                    android:name="eu.fistar.sdcs.pa" />
-            </intent-filter>
         </service>
-
-        <service
-            android:name=".da.bthdp.HDPDeviceAdapter"
-            android:enabled="true"
-            android:exported="false"
-            android:permission="android.permission.BLUETOOTH">
-            <intent-filter>
-                <action
-                    android:name="eu.fistar.sdcs.pa.da.bthdp.HDPDeviceAdapter" />
-            </intent-filter>
-        </service>
-
-        <service
-            android:name=".da.bthdp.hdpservice.HDPHealthManagerService"
-            android:enabled="true"
-            android:exported="false"
-            android:stopWithTask="false"
-            android:permission="android.permission.BLUETOOTH">
-            <intent-filter>
-                <action
-                    android:name="eu.fistar.sdcs.pa.da.bthdp.hdpservice.HDPHealthManagerService" />
-            </intent-filter>
-        </service>
-
-        <service
-            android:name=".da.bthdp.hdpservice.HDPDriverService"
-            android:enabled="true"
-            android:exported="false"
-            android:permission="android.permission.BLUETOOTH" />
 
     </application>
 
