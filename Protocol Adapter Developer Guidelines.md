@@ -147,7 +147,7 @@ You may want to make `pa` a field of your class, so you can access its value fro
 Now that the ServiceConnection is implemented, you can bind the Protocol Adapter service. Here you can find a sample code using an explicit intent to bind the service (as required since Android 5.0 Lollipop):
 
     // Create the Intent to start the PA with
-    Intent intent = new Intent().setComponent(new ComponentName("eu.fistar.sdcs.pa", "eu.fistar.sdcs.pa.PAManagerService"));
+    Intent intent = new Intent().setComponent(new ComponentName(PAAndroidConstants.PA_PACKAGE, PAAndroidConstants.PA_ACTION));
     
     // Start the Protocol Adapter
     bindService(intent, servConn, Context.BIND_AUTO_CREATE);
