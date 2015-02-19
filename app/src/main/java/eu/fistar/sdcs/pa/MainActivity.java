@@ -23,7 +23,6 @@
 package eu.fistar.sdcs.pa;
 
 
-import android.app.Activity;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
@@ -31,14 +30,17 @@ import android.content.ServiceConnection;
 import android.os.IBinder;
 import android.os.RemoteException;
 import android.os.Bundle;
+import android.support.v4.app.FragmentActivity;
 import android.util.Log;
 import android.view.View;
-import android.widget.Button;
+import android.widget.ScrollView;
 import android.widget.TextView;
+import android.widget.Toast;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import eu.fistar.sdcs.pa.common.Capabilities;
 import eu.fistar.sdcs.pa.common.DeviceDescription;
@@ -46,6 +48,13 @@ import eu.fistar.sdcs.pa.common.IProtocolAdapter;
 import eu.fistar.sdcs.pa.common.IProtocolAdapterListener;
 import eu.fistar.sdcs.pa.common.Observation;
 import eu.fistar.sdcs.pa.common.PAAndroidConstants;
+import eu.fistar.sdcs.pa.dialogs.ConfigDaDialogFragment;
+import eu.fistar.sdcs.pa.dialogs.ConnectDevDialogFragment;
+import eu.fistar.sdcs.pa.dialogs.DisconnectDevDialogFragment;
+import eu.fistar.sdcs.pa.dialogs.IPADialogListener;
+import eu.fistar.sdcs.pa.dialogs.SendCommandDialogFragment;
+import eu.fistar.sdcs.pa.dialogs.StartDaDialogFragment;
+import eu.fistar.sdcs.pa.dialogs.StopDaDialogFragment;
 
 
 /**
@@ -56,27 +65,44 @@ import eu.fistar.sdcs.pa.common.PAAndroidConstants;
  * @author Marcello Morena
  * @author Alexandru Serbanati
  */
-public class MainActivity extends Activity {
+public class MainActivity extends FragmentActivity implements IPADialogListener {
 
     private static final String LOGTAG = "PA Activity";
 
     private IProtocolAdapter pa;
-    private boolean toggle = false;
 
     private ServiceConnection serv = new ServiceConnection() {
         @Override
         public void onServiceConnected(ComponentName componentName, IBinder iBinder) {
             // Get the output TextView
-            TextView t=((TextView) findViewById(R.id.lblServiceFeedback));
-            t.setText("Protocol Adapter started!");
+            ((TextView) findViewById(R.id.lblServiceFeedback)).setText(getText(R.string.lbl_feedback_started));
 
             // Disable the start button
-            Button bStart = ((Button) findViewById(R.id.btnStartService));
-            bStart.setEnabled(false);
+            (findViewById(R.id.btnStartService)).setEnabled(false);
 
             // Enable the stop button
-            Button bStop = ((Button) findViewById(R.id.btnStopService));
-            bStop.setEnabled(true);
+            (findViewById(R.id.btnStopService)).setEnabled(true);
+
+            // Enable the stop button
+            (findViewById(R.id.btnStopService)).setEnabled(true);
+
+            // Enable the start DA button
+            (findViewById(R.id.btnStartDA)).setEnabled(true);
+
+            // Enable the stop DA button
+            (findViewById(R.id.btnStopDA)).setEnabled(true);
+
+            // Enable the config DA button
+            (findViewById(R.id.btnConfigDA)).setEnabled(true);
+
+            // Enable the connect device button
+            (findViewById(R.id.btnConnectDevices)).setEnabled(true);
+
+            // Enable the disconnect device button
+            (findViewById(R.id.btnDisconnectDevices)).setEnabled(true);
+
+            // Enable the send command button
+            (findViewById(R.id.btnSendCommand)).setEnabled(true);
 
             // Start all the Device Adapters of the system
             pa = IProtocolAdapter.Stub.asInterface(iBinder);
@@ -88,20 +114,20 @@ public class MainActivity extends Activity {
                 @SuppressWarnings("unchecked")
                 Map<String, Capabilities> das = (Map<String, Capabilities>) pa.getAvailableDAs();
 
-                Log.d(LOGTAG, "Starting all Device Adapters of the system");
+                updateLog("Starting all Device Adapters of the system");
 
                 for (String tempDa : das.keySet()) {
                     pa.startDA(tempDa);
                 }
 
             } catch (RemoteException e) {
-                Log.d(LOGTAG, "Error contacting Protocol Adapter");
+                updateLog("Error contacting Protocol Adapter");
             }
         }
 
         @Override
         public void onServiceDisconnected(ComponentName componentName) {
-            Log.d(LOGTAG, "Protocol Adapter disconnected unexpectedly");
+            updateLog("Protocol Adapter disconnected unexpectedly");
         }
     };
 
@@ -111,33 +137,38 @@ public class MainActivity extends Activity {
      */
     private final IProtocolAdapterListener.Stub paListener = new IProtocolAdapterListener.Stub() {
         @Override
-        public void registerDevice(DeviceDescription deviceDescription) throws RemoteException {
-            Log.d(LOGTAG,  "Device registered " + deviceDescription.getDeviceID());
+        public void registerDevice(DeviceDescription deviceDescription, String daId) throws RemoteException {
+            updateLog("Device registered " + deviceDescription.getDeviceID() + ", handled by Device Adapter " + daId);
         }
 
         @Override
         public void pushData(List<Observation> observations, DeviceDescription deviceDescription) throws RemoteException {
-            Log.d(LOGTAG,  "Data pushed from device " + deviceDescription.getDeviceID());
+            updateLog("Data pushed from device " + deviceDescription.getDeviceID());
         }
 
         @Override
         public void deregisterDevice(DeviceDescription deviceDescription) throws RemoteException {
-            Log.d(LOGTAG,  "Device deregistered " + deviceDescription.getDeviceID());
+            updateLog("Device deregistered " + deviceDescription.getDeviceID());
         }
 
         @Override
         public void registerDeviceProperties(DeviceDescription deviceDescription) throws RemoteException {
-            Log.d(LOGTAG, "Device properties registered: " + deviceDescription.getDeviceID());
+            updateLog("Device properties registered: " + deviceDescription.getDeviceID());
         }
 
         @Override
         public void deviceDisconnected(DeviceDescription deviceDescription) throws RemoteException {
-            Log.d(LOGTAG, "Device disconnected: " + deviceDescription.getDeviceID());
+            updateLog("Device disconnected: " + deviceDescription.getDeviceID());
         }
 
         @Override
         public void log(int logLevel, String daId, String message) throws RemoteException {
-            Log.d(LOGTAG, "LOG! Level: " + logLevel + "; DA: " + daId + "; Message: " + message + ";");
+            updateLog("LOG! Level: " + logLevel + "; DA: " + daId + "; Message: " + message + ";");
+        }
+
+        @Override
+        public void onDAConnected(String daId) throws RemoteException {
+            updateLog("Device Adapter " + daId + " completed the initialization phase");
         }
     };
 
@@ -148,6 +179,9 @@ public class MainActivity extends Activity {
     }
 
     public void startService(View v) {
+
+        updateLog("Starting the Protocol Adapter");
+
         // Create the Intent to start the PA with
         Intent intent = new Intent().setComponent(new ComponentName(PAAndroidConstants.PA_PACKAGE, PAAndroidConstants.PA_ACTION));
 
@@ -156,64 +190,227 @@ public class MainActivity extends Activity {
     }
 
     public void stopService(View v) {
+
+        updateLog("Stopping the Protocol Adapter");
+
         // Unbind the service
         this.unbindService(serv);
 
         // Get the output TextView
-        TextView t=((TextView) findViewById(R.id.lblServiceFeedback));
-        t.setText("Protocol Adapter in unknown status");
+        ((TextView) findViewById(R.id.lblServiceFeedback)).setText(getText(R.string.lbl_feedback_unknown));
 
         // Disable the start button
-        Button bStart = ((Button) findViewById(R.id.btnStartService));
-        bStart.setEnabled(true);
+        (findViewById(R.id.btnStartService)).setEnabled(true);
 
-        // Enable the stop button
-        Button bStop = ((Button) findViewById(R.id.btnStopService));
-        bStop.setEnabled(false);
+        // Disable the stop button
+        (findViewById(R.id.btnStopService)).setEnabled(false);
+
+        // Disable the start DA button
+        (findViewById(R.id.btnStartDA)).setEnabled(false);
+
+        // Disable the stop DA button
+        (findViewById(R.id.btnStopDA)).setEnabled(false);
+
+        // Disable the config DA button
+        (findViewById(R.id.btnConfigDA)).setEnabled(false);
+
+        // Disable the connect device button
+        (findViewById(R.id.btnConnectDevices)).setEnabled(false);
+
+        // Disable the disconnect device button
+        (findViewById(R.id.btnDisconnectDevices)).setEnabled(false);
+
+        // Disable the send command button
+        (findViewById(R.id.btnSendCommand)).setEnabled(false);
     }
 
-    public void connectDevices(View v) {
-
+    @Override
+    public void connectDev(String devId, String daId) {
         try {
-            // Connect to all devices of the system
-            @SuppressWarnings("unchecked")
-            Set<String> devices = pa.getDADevices().keySet();
+            // Connect to the specified device
+            updateLog("Connecting to device: " + devId);
+            pa.forceConnectDev(devId, daId);
+        } catch (RemoteException e) {
+            updateLog("Error communicating wih the PA");
+        }
+    }
 
-            if (!devices.isEmpty()) {
-                for (String tmpDev : devices) {
-                    Log.d(LOGTAG, "Connecting to device: " + tmpDev);
-                    pa.connectDev(tmpDev);
+    @Override
+    public void disconnectDev(String devId) {
+        try {
+            // Disconnect from the specified device
+            updateLog("Disconnecting from device: " + devId);
+            pa.disconnectDev(devId);
+        } catch (RemoteException e) {
+            updateLog("Error communicating wih the PA");
+        }
+    }
+
+    @Override
+    public void sendCommand(String command, String parameter, String devId) {
+        try {
+            pa.execCommand(command, parameter != null ? parameter : "", devId);
+        } catch (RemoteException e) {
+            updateLog("Error executing command");
+        }
+    }
+
+    @Override
+    public void configDa(ComponentName comp) {
+        Intent intent = new Intent().setComponent(comp);
+        startActivity(intent);
+    }
+
+    @Override
+    public void startDA(String daId) {
+        try {
+            updateLog("Starting the Device Adapter " + daId);
+            pa.startDA(daId);
+        } catch (RemoteException e) {
+            updateLog("Error starting the Device Adapter " + daId);
+        }
+    }
+
+    @Override
+    public void stopDA(String daId) {
+        try {
+            updateLog("Stopping the Device Adapter " + daId);
+            pa.stopDA(daId);
+        } catch (RemoteException e) {
+            updateLog("Error stopping the Device Adapter " + daId);
+        }
+    }
+
+    public void parseClick(View v) {
+        switch(v.getId()) {
+            case R.id.btnStartDA:
+                // Start the dialog to start the DA
+                try {
+                    List<String> availableDa = new ArrayList<String>(pa.getAvailableDAs().keySet());
+                    StartDaDialogFragment startDaFrag = StartDaDialogFragment.newInstance(availableDa);
+                    startDaFrag.show(getFragmentManager(), "startda");
+                } catch (RemoteException e) {
+                    updateLog("Failed to show the dialog to start the DAs");
                 }
-            } else {
-                Log.d(LOGTAG, "No device found!");
-            }
-        } catch (RemoteException e) {
-            Log.d(LOGTAG, "Error communicating wih the PA");
+                break;
+            case R.id.btnStopDA:
+                // Start the dialog to stop the DA
+                try {
+                    List<String> availableDa = new ArrayList<String>(pa.getAvailableDAs().keySet());
+                    StopDaDialogFragment stopDaFrag = StopDaDialogFragment.newInstance(availableDa);
+                    stopDaFrag.show(getFragmentManager(), "stopda");
+                } catch (RemoteException e) {
+                    updateLog("Failed to show the dialog to stop the DAs");
+                }
+                break;
+            case R.id.btnConnectDevices:
+                // Start the dialog to connect to a device
+                try {
+                    if (!pa.getDADevices().isEmpty()) {
+                        ConnectDevDialogFragment connDevFrag = ConnectDevDialogFragment.newInstance(pa.getDADevices());
+                        connDevFrag.show(getFragmentManager(), "connectDev");
+                    }
+                    else {
+                        Toast.makeText(this, "No devices available", Toast.LENGTH_SHORT).show();
+                    }
+                } catch (RemoteException e) {
+                    updateLog("Failed to show the dialog to connect a device");
+                }
+                break;
+            case R.id.btnSendCommand:
+                // Start the dialog to send command
+                try {
+                    Map<String, List<String>> devicesDa = pa.getDADevices();
+                    Map<String, List<String>> devicesCommands = new HashMap<>();
+
+                    for (DeviceDescription tmpDev : pa.getConnectedDevices()) {
+                        String devId = tmpDev.getDeviceID();
+                        String daId = devicesDa.get(tmpDev.getDeviceID()).get(0);
+                        List<String> commands = pa.getCommandList(daId);
+                        devicesCommands.put(devId, commands);
+                    }
+
+                    if (!devicesCommands.isEmpty()) {
+                        // Start the dialog to chose the DA to configure
+                        SendCommandDialogFragment sendCommandFrag = SendCommandDialogFragment.newInstance(devicesCommands);
+                        sendCommandFrag.show(getFragmentManager(), "sendCommand");
+                    }
+                    else {
+                        Toast.makeText(this, "No device connected", Toast.LENGTH_SHORT).show();
+                    }
+
+                } catch (RemoteException e) {
+                    updateLog("Failed to show the dialog to send a command");
+                }
+                break;
+            case R.id.btnDisconnectDevices:
+                // Start the dialog to disconnect from a device
+                try {
+                    List<DeviceDescription> connDev = pa.getConnectedDevices();
+                    if (!connDev.isEmpty()) {
+                        List<String> connDevId = new ArrayList<String>();
+                        for (DeviceDescription tmpDev : connDev) {
+                            connDevId.add(tmpDev.getDeviceID());
+                        }
+                        DisconnectDevDialogFragment disconnDevFrag = DisconnectDevDialogFragment.newInstance(connDevId);
+                        disconnDevFrag.show(getFragmentManager(), "disconnectDev");
+                    }
+                    else {
+                        Toast.makeText(this, "No devices connected", Toast.LENGTH_SHORT).show();
+                    }
+                } catch (RemoteException e) {
+                    updateLog("Failed to show the dialog to disconnect from a device");
+                }
+                break;
+            case R.id.btnConfigDA:
+                // Start the dialog to chose the DA to configure
+                try {
+                    Map<String, Capabilities> availableDas = pa.getAvailableDAs();
+                    Map<String, ComponentName> daConfigActivities = new HashMap<String, ComponentName>();
+                    for (Capabilities tmpDaCap : availableDas.values()) {
+                        if (tmpDaCap.isGuiConfigurable()) {
+                            daConfigActivities.put(tmpDaCap.getDaId(), tmpDaCap.getConfigActivityName());
+                        }
+                    }
+                    if (!daConfigActivities.isEmpty()) {
+                        ConfigDaDialogFragment configDaFrag = ConfigDaDialogFragment.newInstance(daConfigActivities);
+                        configDaFrag.show(getFragmentManager(), "configDa");
+                    }
+                    else {
+                        Toast.makeText(this, "No configurable DA available", Toast.LENGTH_SHORT).show();
+                    }
+                } catch (RemoteException e) {
+                    updateLog("Failed to show the dialog to configure the DA");
+                }
+                break;
         }
     }
 
-    /**
-     * Toggle configuration for the Zephyr BioHarness 3.
-     *
-     * @param v
-     */
-    public void toggleConfig(View v) {
-        try {
-            if (toggle) {
-                pa.execCommand("disableGeneralData", "", "C8:3E:99:0D:DC:26");
-                pa.execCommand("disableAccelerometerData", "", "C8:3E:99:0D:DC:26");
-                pa.execCommand("disableBreathingData", "", "C8:3E:99:0D:DC:26");
-                pa.execCommand("disableRtoRData", "", "C8:3E:99:0D:DC:26");
-            } else {
-                pa.execCommand("enableGeneralData", "", "C8:3E:99:0D:DC:26");
-                pa.execCommand("enableAccelerometerData", "", "C8:3E:99:0D:DC:26");
-                pa.execCommand("enableBreathingData", "", "C8:3E:99:0D:DC:26");
-                pa.execCommand("enableRtoRData", "", "C8:3E:99:0D:DC:26");
+    public void clearLogs(View v) {
+        ((TextView) findViewById(R.id.logBox)).setText("");
+    }
+
+    private void updateLog(String log) {
+        Log.d(LOGTAG, log);
+
+        final String fLog = log;
+
+        final TextView tv = (TextView) findViewById(R.id.logBox);
+        tv.post(new Runnable() {
+            @Override
+            public void run() {
+                tv.append(fLog + "\n");
             }
-            toggle = !toggle;
-        } catch (RemoteException e) {
-            Log.d(LOGTAG, "Error executing commands");
-        }
+        });
+
+        final ScrollView sv = (ScrollView) findViewById(R.id.scrollBox);
+        sv.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                sv.fullScroll(ScrollView.FOCUS_DOWN);
+            }
+        }, 100L);
+
     }
 
 }

@@ -221,13 +221,22 @@ public class PAManagerService extends Service {
             // Retrieve the Capabilities object for the specified DA
             Capabilities daCap = daId != null ? availableDAs.get(daId) : null;
 
-            // Start the specified DA using the correct action in the Intent
+            // Start the specified DA using the correct action in the Intent if the DA exists and
+            // it is not already started
             if (daCap != null) {
-                Intent intent;
-                String action = daCap.getActionName();
-                String pkg = daCap.getPackageName();
-                intent = new Intent().setComponent(new ComponentName(pkg, action));
-                bindService(intent, new DAConnection(), Context.BIND_AUTO_CREATE);
+                if (connectedDAs.get(daId) == null) {
+                    Intent intent;
+                    String action = daCap.getActionName();
+                    String pkg = daCap.getPackageName();
+                    intent = new Intent().setComponent(new ComponentName(pkg, action));
+                    bindService(intent, new DAConnection(), Context.BIND_AUTO_CREATE);
+                }
+                else {
+                    Log.i(PAAndroidConstants.PA_LOGTAG, "Device Adapter " + daId + " is already started");
+                }
+            }
+            else {
+                Log.i(PAAndroidConstants.PA_LOGTAG, "Device Adapter " + daId + " is not available in the system");
             }
 
         }
@@ -260,6 +269,9 @@ public class PAManagerService extends Service {
                     connectedDAs.remove(daId);
                     daConnections.remove(daId);
                 }
+            }
+            else {
+                Log.i(PAAndroidConstants.PA_LOGTAG, "Device Adapter " + daId + " is not running");
             }
 
         }
@@ -720,11 +732,11 @@ public class PAManagerService extends Service {
          *      The device to register
          */
         @Override
-        public void registerDevice(DeviceDescription devDesc) {
+        public void registerDevice(DeviceDescription devDesc, String daId) {
             Log.i(PAAndroidConstants.PA_LOGTAG, "Received device description: " + devDesc.toString());
 
             try {
-                appApi.registerDevice(devDesc);
+                appApi.registerDevice(devDesc, daId);
             } catch (RemoteException e) {
                 Log.d(PAAndroidConstants.PA_LOGTAG, "Failed to register device with application!");
             }
@@ -893,6 +905,7 @@ public class PAManagerService extends Service {
                 Log.d(PAAndroidConstants.PA_LOGTAG, "Error disconnecting from DA");
             } catch (IllegalArgumentException e) {
                 Log.d(PAAndroidConstants.PA_LOGTAG, "No DA to disconnect from");
+                Log.d(PAAndroidConstants.PA_LOGTAG, Log.getStackTraceString(e));
             }
         }
     }
@@ -1102,6 +1115,10 @@ public class PAManagerService extends Service {
 
                 // Start the newly connected DA
                 tmpDa.start();
+
+                // Notify the Application that the DA has finished its initialization phase
+                appApi.onDAConnected(daId);
+
             } catch (RemoteException e) {
                 Log.d(PAAndroidConstants.PA_LOGTAG, "Failed to start DA " + daId);
             }
@@ -1126,6 +1143,7 @@ public class PAManagerService extends Service {
             } catch (RemoteException ex) {
                 Log.e(PAAndroidConstants.PA_LOGTAG, daId + " Device Adapter failed to connect.");
             }
+
         }
 
     }

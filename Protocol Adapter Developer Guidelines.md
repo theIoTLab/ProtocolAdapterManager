@@ -2,37 +2,36 @@
 #Protocol Adapter - Android Developers Guide
 
 FI-STAR Phase: Beta  
-Document version: 0.9 (draft)  
-Date: 03/12/2014  
-
-##[IMPORTANT] Before you read
-This is a DRAFT document related to the yet UNRELEASED 3.3 version of the source. The purpose of this document is to allow developers to preview the architecture of the Protocol Adapter and familiarize with it. We will delete this line as soon as we will provide the code.
+Document version: 1.0 (draft)
+Date: 19/02/2015
 
 ##What is the Protocol Adapter
 The Protocol Adapter is an M2M data collection software that runs on Android (mainly mobile) devices acting as a gateway for sensor devices. The Protocol Adapter was developed as an open source component of the FI-STAR Frontend Platform, in the frame of the FI-STAR project.
 The Protocol Adapter software architecture has three high-level components: 
+
 * the Protocol Adapter Manager Service,
-* the Device Adapter and 
+* the Device Adapters and
 * the Protocol Adapter Library
 
-###The Protocol Adapter Manager Service
-It includes a Protocol Adapter Manager (PAManager) service and several Device Adapters (DA) on the same Android device. All of them are implemented in separate Android applications and communicate using the AIDL interfaces and common objects included in a separate library. The Protocol Adapter automatically discovers DAs present on the system at startup time and adds them to the pool of available DAs. This makes the architecture modular and expandable. 
-The PAManager has three main roles:
-* to provide a single entry poitn for data-collection applications 
+###The Protocol Adapter Manager
+The Protocol Adapter Manager is a service (PAManagerService) that manages the several Device Adapters (DA) possibly installed on the same Android device. All of them are implemented in separate Android applications and communicate using the AIDL interfaces and the common objects included in the separate library. At startup time the Protocol Adapter Manager automatically discovers DAs installed on the system and adds them to the pool of available DAs. This makes the architecture modular and expandable.
+The PAManagerService has three main roles:
+
+* to provide a single entry point for data-collection applications
 * to provide device management interfaces for the application
 * to manage the lifecycle of the DAs. 
 
-###The Device Adapter
-A Device Adapter is a software component that manages low-level connections to sensor devices of a given kind and collects data from them. The collected data resulting from the measurements carried out by the sensor devices are provided to the Protocol Adapter with a well-known data structure (i.e. Java object) called Observation. 
+###The Device Adapters
+A Device Adapter is a software component that manages low-level connections to sensor devices of a given kind and collects data from them. The collected data resulting from the measurements carried out by the sensor devices are provided to the Protocol Adapter Manager with a well-known data structure (i.e. Java object) called Observation.
 Generally, DAs provide communication and interoperability at channel and syntactic level. Some operational aspects are also managed by the DA with sensor devices.
 
 ###The Protocol Adapter Library
-The Protocol Adapter library is a library that contains all the objects and facilities (parcelable objects, AIDL interfaces, etc.) needed to develop applications that make use of the Protocol Adapter. Once included in your project, you won’t need to worry about low level details, but instead you can focus on implementing your logic, taking for granted the underlying infrastructure and functionalities provided by the Protocol Adapter. Please note that the library is not only for using in applications, but it is also used by us in the Protocol Adapter and in every Device Adapter. We released this library in the form of an AAR package.
+The Protocol Adapter library is a library that contains all the objects and facilities (parcelable objects, AIDL interfaces, etc.) needed to develop applications that make use of the Protocol Adapter. Once included in your project, you won’t need to worry about low level details, but instead you can focus on implementing your logic, taking for granted the underlying infrastructure and functionalities provided by the Protocol Adapter. Please note that the library is not only for using in applications, but it is also used by us in the Protocol Adapter Manager and in every Device Adapter. We released this library in the form of an AAR package.
 
 ##Working with the Protocol Adapter Library
 ###How to include the library in a project
-The first thing to do in order to work with the Protocol Adapter is to include the Protocol Adapter Library inside your project. Since Android Studio is now (Dec. 2014) in the latest stages of beta and it would soon released as stable, and since we used Android Studio as our IDE when developing the entire project, we will cover here the AAR package inclusion on Android Studio. For other IDEs, you should be able to find abundant resources on-line.
-Unluckily, to date (Dec. 2014) Android Studio does not offer a straightforward method to include an AAR package, but nevertheless the process is quite simple.
+The first thing to do in order to work with the Protocol Adapter is to include the Protocol Adapter Library inside your project. Since Android Studio is now the official Android IDE and we used it as our IDE when developing the entire project, we will cover here the AAR package inclusion on Android Studio. For other IDEs, you should be able to find abundant resources on-line.
+Unluckily, to date (Feb. 2015) Android Studio does not offer a straightforward method to include an AAR package, but nevertheless the process is quite simple.
 
 First of all you should copy the AAR file inside the `libs` directory of your app module. You can do this by simply copy-pasting the file from your file manager directly in the IDE. 
 
@@ -44,7 +43,7 @@ Then you should edit the build.gradle file of your app module and add these line
     }
     dependencies {
       // This is the entry that adds the dependency from the AAR library
-      compile 'eu.fistar.sdcs.pa.common:protocol-adapter-lib:3.3.0@aar'
+      compile 'eu.fistar.sdcs.pa.common:protocol-adapter-lib:3.4.0@aar'
      }
 
 The string passed as an argument of `compile` is made of 4 parts: the package name, the file name, the library version and the @aar suffix. To date (Dec. 2014) 3.3.0 is the latest version of the library, but you should take care of inserting the right version of the library here, the one that matches with the file you just copied in the project.
@@ -158,6 +157,7 @@ Once the binding is done, Android will call the “onServiceConnected” method 
 ###The IProtocolAdapter AIDL interface
 This is the AIDL interface implemented by the Protocol Adapter and includes all the methods used by Applications to communicate with the PA.
 These methods are:
+
 * `List<DeviceDescription> getConnectedDevices()` - Returns a list of all the devices connected at the moment with the Device Adapter.
 * `Map<String, List<String>> getDADevices()` - Returns a map containing the Device ID of all the devices paired with the smartphone that can be handled by at least one DA as the key, and a list of DA IDs of DA that can handle that device as the value.
 * `void setDeviceConfig(Map config, String devId)` - Set the specific configuration of a device managed by the Device Adapter passing a data structure with key-value pairs containing all possible configuration parameters and  their values, together with the device ID. This should be done before starting the Device  Adapter, otherwise standard configuration will be used. Depending on capabilities, this  could also be invoked when the DA is already running.
@@ -185,6 +185,7 @@ Remember that methods of the IProtocolAdapter interface are not guaranteed to re
 ###The IProtocolAdapterListener AIDL Interface
 This is the AIDL interface implemented by an Application and includes all the methods used by Protocol Adapter to communicate with Applications.
 These methods are:
+
 * `void registerDevice(DeviceDescription devDesc)` - Called by Protocol Adapter to register a new device.
 * `void pushData(List<Observation> observations, DeviceDescription devDesc)` - Called by Protocol Adapter to push new measurements data coming from the device.
 * `void deregisterDevice(DeviceDescription devDesc)` - Called by Protocol Adapter to deregister a device with the protocol adapter when it is not available anymore.
@@ -198,6 +199,7 @@ The library includes a set of objects used to communicate data and represent dev
 ####The DeviceDescription object
 The DeviceDescription object represents a definition of a device. A device definition is used to represent a device and all its properties, such as sensors.
 Here are the getter methods to retrieve the properties of the DeviceDescription:
+
 * `public String getDeviceID()` - Returns the device unique identifier as provided by the device.
 * `public String getSerialNumber()` - Returns the model number of the device.
 * `public String getModelName()` - Returns the model name of the device.
@@ -208,6 +210,7 @@ Here are the getter methods to retrieve the properties of the DeviceDescription:
 ####The SensorDescription object
 The SensorDescription object defines a sensor. A sensor definition is used to represent a sensor of a device and its characteristics.
 Here are the getter methods to retrieve the properties of the SensorDescription:
+
 * `public String getSensorName()` - Returns the name of the sensor (i.e. Pulsimeter).
 * `public String getMeasurementUnit()` - Returns the unit of measure used by the sensor (i.e. Bpm).
 * `public String getPropertyName()` - Returns the property name of the sensor (i.e. Heart Rate).
@@ -215,6 +218,7 @@ Here are the getter methods to retrieve the properties of the SensorDescription:
 ####The Observation object
 The Observation object describes observations. An observation is used to encapsulate one or more measurements coming from a sensor and carrying some meta data together with the measurements.
 Here are the getter methods to retrieve the properties of the Observation:
+
 * `public String getPropertyName()` - Returns the property name (same as propertyName in SensorDescription).
 * `public String getMeasurementUnit()` - Returns the unit of measure of the property (same as measurementUnit in SensorDescription).
 * `public List<String> getValues()` - Returns the values observed for the property.
@@ -224,6 +228,7 @@ Here are the getter methods to retrieve the properties of the Observation:
 ####The Capabilities object
 The Capabilities object is used to describe the capabilities of the device. The Device Adapter creates this object when it starts (usually defining it as a constant) and provides it to the Protocol Adapter.
 Here are the public methods used to access the Capabilities of the Device Adapter:
+
 * `public boolean hasBlacklist()` - States whether Device Adapter supports blacklist or not. If true, the Device Adapter should provide working implementation of the following methods: `addDeviceToBlackList()`, `removeDeviceFromBlacklist()`, `getBlacklist()`, `setBlacklist()`.
 * `public boolean hasWhitelist()` - States whether Device Adapter supports whitelist or not. If true, the Device Adapter should provide working implementation of the following methods: `addDeviceToWhiteList()`, `removeDeviceFromWhitelist()`, `getWhitelist()`, `setWhitelist()`.
 * `public boolean isGuiConfigurable()` - States whether Device Adapter supports configuration through a GUI. If true, the Device Adapter should provide working implementation of the following method: `getDAConfigActivityName()`.

@@ -1,8 +1,8 @@
 #Protocol Adapter Manager
 
 FI-STAR Phase: Beta  
-Document version: 0.9 (draft)  
-Date: 15/12/2014
+Document version: 1.0 (draft)
+Date: 19/02/2015
 
 ##What is the Protocol Adapter
 The Protocol Adapter is an M2M data collection software that runs on Android (mainly mobile) devices acting as a gateway for sensor devices. The Protocol Adapter was developed as an open source component of the FI-STAR Frontend Platform, in the frame of the FI-STAR project.
@@ -57,7 +57,7 @@ Then you should edit the build.gradle file of your app module and add these line
       compile 'eu.fistar.sdcs.pa.common:protocol-adapter-lib:3.3.0@aar'
      }
 
-The string passed as an argument of `compile` is made of 4 parts: the package name, the file name, the library version and the @aar suffix. To date (Dec. 2014) 3.3.0 is the latest version of the library, but you should take care of inserting the right version of the library here, the one that matches with the file you just copied in the project.
+The string passed as an argument of `compile` is made of 4 parts: the package name, the file name, the library version and the @aar suffix. To date (Feb. 2015) 3.4.0 is the latest version of the library, but you should take care of inserting the right version of the library here, the one that matches with the file you just copied in the project.
 Finally, you should force a sync of the project with gradle files. You can do this by clicking the specific button.
 If you want to use a directory other than `libs` just use the same name in the `build.gradle` file.
 
@@ -75,7 +75,7 @@ Example code follows:
 
      private final IProtocolAdapterListener.Stub paListener = new IProtocolAdapterListener.Stub() {
         @Override
-        public void registerDevice(DeviceDescription deviceDescription) throws RemoteException {
+        public void registerDevice(DeviceDescription deviceDescription, String daId) throws RemoteException {
             /*************************
             * Your logic goes here
             **************************/
@@ -120,6 +120,14 @@ Example code follows:
             * Your logic goes here
             **************************/
             Log.d(LOGTAG, "LOG! Level: " + logLevel + "; DA: " + daId + "; Message: " + message + ";");
+        }
+
+        @Override
+        public void onDAConnected(String daId) throws RemoteException {
+            /*************************
+            * Your logic goes here
+            **************************/
+            Log.d(LOGTAG, "Device Adapter " + daId + "just completed the initialization phase");
         }
     };
 
@@ -169,8 +177,8 @@ Once the binding is done, Android will call the “onServiceConnected” method 
 The first thing you should do in order to use the Protocol Adapter is binding the service as described in the related section and then register your listener.
 Once the binding is complete and your listener is registered, the Protocol Adapter is up and running, but it is not really working yet. The reason is that no Device Adapters are started at this point. You can start a specific Device Adapter that you know in advance or you can get all the Device Adapters available in the system and start some of them.
 To get all the Device Adapters available in the system you can use the `getAvailableDAs()` method of the IProtocolAdapter interface. This method returns a Map that has DA IDs as the keys, and the corresponding Capabilities as the values. If you ever need to get the Capabilities object of a specific DA, you can retrieve that by calling the `getDACapabilities()` method of the IProtocolAdapter interface, passing the DA ID as an argument.
-To start a specific DA you can use the `startDA()` method of the IProtocolAdapter interface, passing the DA ID as an argument.
-Once you started the DAs you are interested in, the corresponding devices will be available to use in the Protocol Adapter.
+To start a specific DA you can use the `startDA()` method of the IProtocolAdapter interface, passing the DA ID as an argument. Since the starting of a Device Adapter is an asynchronous operation, the Protocol Adapter will call the `onDAConnected()` method of your `IProtocolAdapterListener` interface when the process is completed.
+Once the DAs you are interested in is up and running, the corresponding devices will be available to use in the Protocol Adapter.
 Remember that bluetooth device discovery and bluetooth device pairing is not supported inside the Protocol Adapter, so for a bluetooth device to be available it must be paired in advance.
 
 ####Interaction with devices
@@ -183,7 +191,7 @@ If in your system there are DAs that are connection initiators, you are able to 
 
 #####Connection
 If in your system there are DAs that are connection initiators, you are able to explicitly connect to the devices they handle. Usually this is the only way to start getting data from that devices. To connect to a device, you should use the `connectDev()` method of the IProtocolAdapter interface, passing the ID of the device you want to connect to. The Protocol Adapter will take care of finding the DA that manages that device. Beware that, if the device is handled by more than one DA, the Protocol Adapter won’t be able to pick one of them for you. In this case you should use the `forceConnectDev()` method of the IProtocolAdapter interface to connect to the device, passing both the ID of the device you want to connect to and the ID of the DA you want to use for the connection as arguments. If you don’t do this way, the Protocol Adapter will throw an exception when you try to perform a regular connection. To find out how many DA handles a single device, please refer to the previous section.
-Anyway, when the connection with the device is established, the `registerDevice()` method of the IProtocolAdapterListener interface is called by the Protocol Adapter to notify the event, no matter what method was called to perform the connection. The same method get called even when the connection is spontaneous (in case the DA is not connection initiator).
+Anyway, when the connection with the device is established, the `registerDevice()` method of the IProtocolAdapterListener interface is called by the Protocol Adapter to notify the event, no matter what method was called to perform the connection. The same method gets called even when the connection is spontaneous (in case the DA is not connection initiator).
 
 #####Configuration
 Some DAs may support device configuration. To find out if a DA supports it, you can retrieve its Capabilities object and invoke the `getDeviceConfigurationType()` method. This way you will know if the configuration is not supported, if its supported only before you connect to a device, if its supported at runtime, or if it’s supported both before you connect to a device and at runtime.
