@@ -2,7 +2,7 @@
 #Protocol Adapter - Android Developers Guide
 
 FI-STAR Phase: Beta  
-Document version: 1.0 (draft)
+Document version: 1.0 (draft)  
 Date: 19/02/2015
 
 ##What is the Protocol Adapter
