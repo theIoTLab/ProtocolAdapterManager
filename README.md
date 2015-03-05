@@ -1,7 +1,7 @@
 #Protocol Adapter Manager
 
 FI-STAR Phase: Beta  
-Document version: 1.0 (draft)
+Document version: 1.0 (draft)  
 Date: 05/03/2015
 
 ##What is the Protocol Adapter Manager
