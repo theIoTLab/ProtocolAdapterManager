@@ -12,14 +12,14 @@ The PAManagerService has three main roles:
 * to provide device management interfaces for the application
 * to manage the lifecycle of the DAs.
 
-##Using the Protocol Adapter
+##Using the Protocol Adapter Manager
 ###Installation
 For you to be able to use the Protocol Adapter, it must be installed on the Android device where you are going to use it. To do this, just manually install the Protocol Adapter APK in the system.
 The Protocol Adapter by itself is pretty useless, so you should install at least a Device Adapter, specifically the one (or ones) that handles the devices you want to work with. To do this, just manually install in the system the APKs of the Device Adapters you want to use.
 Remember that, due to Android security policies, Device Adapters will not respond to Protocol Adapter’s startup probing unless they are manually started once after installation. To do this, just go to your Drawer (the list of installed applications), find the icon of the Device Adapter you just installed and tap on it. After their first time (see above) there is no need to start the Device Adapters again.
 
 ###Using the Protocol Adapter Library to interact with Protocol Adapter
-Once the Protocol Adapter is installed in your system, the easiest way to interact with it is by using the Protocol Adapter Library. To know more on how to include this library in you project and how to use it, please refer to the Protocol Adapter Library documentation that you can find [here](https://github.com/theIoTLab/ProtocolAdapterLibrary/README.md).
+Once the Protocol Adapter is installed in your system, the easiest way to interact with it is by using the Protocol Adapter Library. To know more on how to include this library in you project and how to use it, please refer to the Protocol Adapter Library documentation that you can find [here](https://github.com/theIoTLab/ProtocolAdapterLibrary/blob/master/README.md).
 
 ###Protocol Adapter interaction flow
 ####Initialization of the Protocol Adapter
