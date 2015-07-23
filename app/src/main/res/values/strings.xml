@@ -14,7 +14,7 @@
     <string name="btn_clear_logs">Clear Logs</string>
     <string name="btn_config_da">Config Device Adapter</string>
     <string name="hello_blank_fragment">Hello blank fragment</string>
-    <string name="ok">Ok</string>
+    <string name="ok">OK</string>
     <string name="cancel">Cancel</string>
     <string name="lbl_device">Device</string>
     <string name="lbl_device_adapter">Device Adapter</string>

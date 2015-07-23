@@ -45,6 +45,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 import eu.fistar.sdcs.pa.common.Capabilities;
@@ -74,13 +75,13 @@ public class PAManagerService extends Service {
     private final static String SHPREF_BLACKLIST_NAME = "blacklist";
 
     // Variables for storing white/black lists
-    private final List<String> blacklist = new CopyOnWriteArrayList<String>();
-    private final List<String> whitelist = new CopyOnWriteArrayList<String>();
+    private final List<String> blacklist = new CopyOnWriteArrayList<>();
+    private final List<String> whitelist = new CopyOnWriteArrayList<>();
 
     // Variables for Device Adapter management
-    private Map<String, Capabilities> availableDAs = new HashMap<String, Capabilities>();       // <[DA ID], [DACapabilities]>
-    private Map<String, IDeviceAdapter> connectedDAs = new HashMap<String, IDeviceAdapter>();   // <[DA ID], [DAInstance]>
-    private Map<String, DAConnection> daConnections = new HashMap<String, DAConnection>();
+    private Map<String, Capabilities> availableDAs = new ConcurrentHashMap<>(); // <[DA ID], [DACapabilities]>
+    private Map<String, IDeviceAdapter> connectedDAs = new ConcurrentHashMap<>(); // <[DA ID], [DAInstance]>
+    private Map<String, DAConnection> daConnections = new ConcurrentHashMap<>(); // <[DA ID], [DAConnection]>
 
     // Variables for Application Management
     private IProtocolAdapterListener appApi;
@@ -777,8 +778,8 @@ public class PAManagerService extends Service {
                 dataStr += obs.toString() + "\n";
             }
             Log.i(PAAndroidConstants.PA_LOGTAG, "Received data to push\n" +
-                    "Device: " + devDesc.getDeviceID() +
-                    "Data: " + dataStr);
+                    "Device: " + devDesc.getDeviceID() + "\n" +
+                    "Data: \n" + dataStr);
 
             try {
                 appApi.pushData(observations, devDesc);
@@ -863,6 +864,8 @@ public class PAManagerService extends Service {
         // If this is the first start, do some initialization tasks
         if (firstStart) {
             try {
+                Log.d(PAAndroidConstants.PA_LOGTAG, "Protocol Adapter v" + BuildConfig.VERSION_NAME + " starting");
+
                 // Check who is the Issuer who started the PA
                 String issuer = intent.getStringExtra(SDCS_MESSAGES.EXTRA_NAME_ISSUER);
                 if (issuer == null) {
@@ -908,6 +911,8 @@ public class PAManagerService extends Service {
                 Log.d(PAAndroidConstants.PA_LOGTAG, Log.getStackTraceString(e));
             }
         }
+
+        Log.d(PAAndroidConstants.PA_LOGTAG, "Protocol Adapter terminating");
     }
 
     /**
